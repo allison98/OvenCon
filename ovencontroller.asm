@@ -58,12 +58,14 @@ y:   ds 4
 bcd: ds 5
 Result: ds 2
 coldtemp: ds 4
+hottemp:ds 4
 reflowstate: ds 1 ; Used for changing states/displaying states. Not used anywhere else (as of Jan 30). Assign a number to each state
 soaktemp: ds 1
 soaktime: ds 1
 reflowtemp: ds 1
 reflowtime: ds 1
 countererror: ds 1
+temperature:ds 4
 
 BSEG
 startflag: dbit 1
@@ -82,6 +84,11 @@ HIGH_TEMP EQU P3.6
 ; make sure that this is same with the rest of the ckt 
 OvenPin equ Px.x
 StartButton equ Px.x 
+BUTTON_1 equ Px.x
+BUTTON_2 equ Px.x
+BUTTON_3 equ Px.x
+
+
 
 
 $NOLIST
@@ -243,6 +250,27 @@ DO_SPI_G_LOOP:
 	 pop acc
 	 ret
 
+
+; Send a constant-zero-terminated string using the serial port
+SendString:
+    clr A
+    movc A, @A+DPTR
+    jz SendStringDone
+    lcall putchar
+    inc DPTR
+    sjmp SendString
+SendStringDone:
+    ret
+
+Display_10_digit_BCD:
+	Set_Cursor(1, 6)
+	Display_BCD(bcd+4)
+	Display_BCD(bcd+3)
+	Display_BCD(bcd+2)
+	Display_BCD(bcd+1)
+	Display_BCD(bcd+0)
+	ret
+	
 ;---------------------------------;
 ; initialize the serial ports     ;
 ;---------------------------------;
@@ -288,15 +316,23 @@ MainProgram:
 		lcall INIT_SPI
     
     
-    ljmp Menu_select1
+    ljmp Menu_select1 ; selecting and setting profiles
     
 FOREVER: ;this will be how the oven is being controlled ; jump here once start button is pressed!!!
 	
-  lcall checkstop
-  lcall checkerror
+   lcall checkstop
+   lcall checkerror
   
-	lcall readingcoldjunction ;answer in 'bcd' is saved in variable called 'coldtemp'
-  
+	lcall readingcoldjunction ;answer in x is saved in variable called 'coldtemp'
+    lcall readinghotjunction ;answer in x is saved in vari called hottemp
+    
+    load_X(coldtemp)
+    load_y(hottemp)
+    lcall add32
+    mov a, x
+    mov temperature, a ;final temperature is in the temperature variable
+    
+    
   
   
 	ljmp FOREVER
@@ -388,11 +424,15 @@ noerror:
   pop acc
   pop psw 
 	ret
-
+	
+;------------------------------;
+; Temperature Reader From Sam	 ;
+;------------------------------;
+	
 readingcoldjunction: ;read the cold junction from the adc
 ;reading the adc
 	push acc
-  push psw
+    push psw
   
 	clr CE_ADC 
 	mov R0, #00000001B ; Start bit:1 
@@ -409,40 +449,73 @@ readingcoldjunction: ;read the cold junction from the adc
 	;wait for 1 second 
 	Wait_Milli_Seconds(#250)
 	Wait_Milli_Seconds(#250)
+  
+	lcall Calculate_Temp_in_Celcius 
+    mov a, x
+    mov coldtemp, a
+  
+	  pop acc
+	  pop psw
+	  ret   
+	   
+
+;Trying to trasfer the binary value in ADC into BCD and then into 
+;ASCII to show in putty
+Calculate_Temp_in_Celcius: 	
+	clr a 
+	Load_x(0)	; 
+	Load_y(0)
+	; load the result into X 
+	mov a, Result+0
+	mov X, a
+	mov a, Result+1
+	mov X+1, a
+	Load_Y (4096)
+	lcall mul32;
+	Load_Y(1023)
+	lcall div32;  
+	;calculte temperature 
+	Load_Y(273)
+	mov temp, X
+	lcall sub32
+	lcall hex2bcd ; converts binary in x to BCD in BCD
+	lcall Display_Temp_LCD 
+;	lcall Display_Temp_Putty
+	ret
+
+
+;------------------------------;
+; reading hot junction 		 ;
+;------------------------------;
+readinghotjunction: ;read the hot junction from the adc from oven and thermocouple wires
+;reading the adc
+	push acc
+    push psw
+  
+	clr CE_ADC 
+	mov R0, #00000001B ; Start bit:1 
+	lcall DO_SPI_G
+	mov R0, #10000000B ; Single ended, read channel 0 
+	lcall DO_SPI_G 
+	mov a, R1          ; R1 contains bits 8 and 9 
+	anl a, #00000011B  ; We need only the two least significant bits 
+	mov Result+1, a    ; Save result high.
+	mov R0, #55H ; It doesn't matter what we transmit... 
+	lcall DO_SPI_G 
+	mov Result, R1     ; R1 contains bits 0 to 7.  Save result low. 
+	setb CE_ADC 
+	;wait for 1 second 
 	Wait_Milli_Seconds(#250)
 	Wait_Milli_Seconds(#250)
   
 	lcall Calculate_Temp_in_Celcius 
-  mov a, bcd
-  mov coldtemp, a
+    mov a, x
+    mov hottemp, a
   
-  pop acc
-  pop psw
-  ret   
-   
-;------------------------------;
-; Temperature Reader From Sam	 ;
-;------------------------------;
-; Send a constant-zero-terminated string using the serial port
-SendString:
-    clr A
-    movc A, @A+DPTR
-    jz SendStringDone
-    lcall putchar
-    inc DPTR
-    sjmp SendString
-SendStringDone:
-    ret
-
-Display_10_digit_BCD:
-	Set_Cursor(1, 6)
-	Display_BCD(bcd+4)
-	Display_BCD(bcd+3)
-	Display_BCD(bcd+2)
-	Display_BCD(bcd+1)
-	Display_BCD(bcd+0)
-	ret
-
+	  pop acc
+	  pop psw
+	  ret   
+	  
 	
 ;Trying to trasfer the binary value in ADC into BCD and then into 
 ;ASCII to show in putty
@@ -467,12 +540,7 @@ Calculate_Temp_in_Celcius:
 	lcall Display_Temp_LCD 
 ;	lcall Display_Temp_Putty
 	ret
-	
-Show_Celcius: 
-	lcall Display_Temp_LCD
-	lcall Display_Temp_Putty
-	ret
-	
+
 	
 ; Display Temperature in Putty!
 Display_Temp_Putty:
