@@ -1,3 +1,4 @@
+
 $MODLP51
 org 0000H
    ljmp MainProgram
@@ -52,7 +53,6 @@ org 0x002B
 	ljmp Timer2_ISR
 
 ;future variables
-DSEG at 30H
 x:   ds 4
 y:   ds 4
 bcd: ds 5
@@ -66,10 +66,17 @@ reflowtemp: ds 1
 reflowtime: ds 1
 countererror: ds 1
 temperature:ds 4
+Count1ms:     ds 2 ; Used to determine when half second has passed 
+counterror: ds 1
+reflowparam: ds 1
+second: ds 1
+minute: ds 1
+temp: ds 1
 
 BSEG
 startflag: dbit 1
 errorflag: dbit 1
+mf: dbit 1
 
 CSEG
 ; These 'equ' must match the wiring between the microcontroller and the LCD!
@@ -83,10 +90,11 @@ LCD_D7 equ P3.5
 HIGH_TEMP EQU P3.6
 ; make sure that this is same with the rest of the ckt 
 OvenPin equ Px.x
-StartButton equ Px.x 
-BUTTON_1 equ Px.x
-BUTTON_2 equ Px.x
-BUTTON_3 equ Px.x
+StartButton equ P0.2 
+BUTTON_1 equ P0.3
+BUTTON_2 equ P0.4
+BUTTON_3 equ P0.7
+OvenButton equ P2.5
 
 
 
@@ -103,16 +111,21 @@ $LIST
 
 ; constant strings  
 Test_msg:  db 'Temp:xx.xx*C', 0
-MenuMessage1: db '1.Soak Temp', 0
+MenuMessage1: db '1.Soak Temp', 0   ;used when selecting parameter
 MenuMessage2: db '2.Soak Time', 0
 MenuMessage3: db '3.Reflow Temp', 0
 MenuMessage4: db '4.Reflow Time', 0
+MenuSoakTemp: db 'Soak Temp:', 0  ;used when changing parameter
+MenuSoakTime: db 'Soak Time:', 0
+MenuReflowTemp: db 'Reflow Temp:', 0
+MenuReflowTime: db 'Reflow Time:', 0
 
 
 ;---------------------------------;
 ; Routine to initialize the ISR   ;
 ; for timer 0                     ;
 ;---------------------------------;
+
 Timer0_Init:
 	mov a, TMOD
 	anl a, #0xf0 ; Clear the bits for timer 0
@@ -189,29 +202,11 @@ Timer2_ISR:
 	mov Count1ms+1, a
   
 	mov a, second 	; Increment the BCD counter
-	cjne a, #0x59, incc
-	mov a, #0x0
-	ljmp da1
-  
-incc:
+
 	add a, #0x01 ;THIS IS ADDING SECONDS
-da1:
+
 	da a ; Decimal adjust instruction.  Check datasheet for more details!
 	mov second, a
-
-increaseerror:  
-  mov a, countererror
-  inc a
-  mov countererror, a
-
-  
-;CHECK TO SEE IF SECOND HAS RESET, THEN INCREMENT MINUTES
-  mov a, second	
-	cjne a, #0x0,Timer2_ISR_done 
-	mov a, minute
-	add a, #0x01 ;increase min
-	da a ; Decimal adjust instruction.  Check datasheet for more details!
-	mov minute, a	
 	
 Timer2_ISR_done:
 	pop psw
@@ -250,6 +245,12 @@ DO_SPI_G_LOOP:
 	 pop acc
 	 ret
 
+; Send a character using the serial port
+putchar:
+    jnb TI, putchar
+    clr TI
+    mov SBUF, a
+    ret
 
 ; Send a constant-zero-terminated string using the serial port
 SendString:
@@ -303,7 +304,10 @@ MainProgram:
     mov P0M1, #0
     lcall LCD_4BIT
     mov reflowstate, #0   ; do nothing state
-    mov reflowparam, #0   ; menu
+    mov soaktemp, #0
+    mov soaktime, #0
+    mov reflowtemp, #0
+    mov reflowtime, #0
     mov countererror, #0	; to check if the thermocouple is in the oven
 		
     ;initial message 
@@ -314,7 +318,7 @@ MainProgram:
     
     lcall InitSerialPort
 		lcall INIT_SPI
-    
+		lcall Timer0_Init
     
     ljmp Menu_select1 ; selecting and setting profiles
     
@@ -322,17 +326,28 @@ FOREVER: ;this will be how the oven is being controlled ; jump here once start b
 	
    lcall checkstop
    lcall checkerror
+   lcall Readingtemperatures
+ 	 lcall checkingsoaktemperature ; checking if we have reached Soak Temp yet
+   clr tr2   			; restarting timer 2 to keep track of the time lasped since we reached soaktemp
+   mov a, #0
+   mov seconds, a
+   
+  ; after we reached the soak temp check for reflow temp 
+soaktempchecked:  
+	lcall checkstop
+  lcall calctemperatures
+  lcall keepingsoaktempsame 
+  lcall checksoaktime
+  sjmp soaktempchecked
   
-	lcall readingcoldjunction ;answer in x is saved in variable called 'coldtemp'
-    lcall readinghotjunction ;answer in x is saved in vari called hottemp
-    
-    load_X(coldtemp)
-    load_y(hottemp)
-    lcall add32
-    mov a, x
-    mov temperature, a ;final temperature is in the temperature variable
-    
-    
+increasereflowtemp:
+  lcall checkstop
+  lcall calctemperatures
+  lcall checkingreflowtemp ;loops back to increasereflowtemp until reflow temp is reached
+  clr tr2
+  mov a, #0
+  mov seconds, a
+
   
   
 	ljmp FOREVER
@@ -344,11 +359,69 @@ FOREVER: ;this will be how the oven is being controlled ; jump here once start b
   
 ;---------------------------------;
 ; functions						 				    ;
-;---------------------------------;      
+;---------------------------------; 
+
+; After reaching the soak temperature we stay at that temp 
+; for 60 to 120 seconds
+
+keepingsoaktempsame:
+	; temp <= soaktemp+10
+  load_X(10)
+  load_Y(soaktemp)
+  lcall add32		; upper bound for the straight line for the soak temp: soaktemp+10
+  load_Y(temperature)
+  lcall x_gteq_y   ; compare if temp <= soaktemp + 10
+  jnb mf, soaktemptoolow; if mf!=1 then keep checking 
+  
+  ; temp>= soaktemp-10
+  load_Y(10)
+  load_X(soaktemp)
+  lcall sub32		; lower bound for the straight line for the soak temp: soaktemp-10
+  load_Y(temperature)
+  lcall x_gteq_y   ; compare if temp <= soaktemp - 10 
+  jnb mf, soaktemptoolow; if mf!=1 then keep checking 
+  
+soaktempisokay:
+	ret
+  
+soaktemptoohigh: 
+  lcall TurnOvenOff
+  ret
+soaktemptoolow:
+	lcall TurnOvenOn
+  ret
+  
+checksoaktime:
+	mov a, seconds
+  cjne a, soaktemptime, soaknotdone
+  lcall TurnOvenOff
+ ljmp increasereflowtemp
+soaknotdone:
+	ret 
 
 
+; reading the thermocouple junction values 
+Readingtemperatures:
+ 	lcall readingcoldjunction ;answer in x is saved in variable called 'coldtemp'
+  lcall readinghotjunction ;answer in x is saved in vari called hottemp
+  load_X(coldtemp)
+  load_y(hottemp)
+  lcall add32   ; actual temperature 
+  mov a, x
+  mov temperature, a ;final temperature is in the temperature variable
+  ret
 
-
+; checking if the tremperture at the hot end is equal to soak temp yet
+checkingsoaktemperature: 
+  load_X(temperature)
+  load_Y(soaktemp)
+  lcall x_gteq_y   ; compare if temp >= soaktemp 
+  jnb mf, FOREVER ; if mf!=1 then keep checking 
+  ;this is what it should do if soaktemperature = actual tempreature     
+  lcall TurnOvenOff
+  ret
+  
+ ;stop the process at any time  
 checkstop:
  	jnb STARTBUTTON, stop         ; start the reflow process
   Wait_Milli_Seconds(#50)
@@ -366,14 +439,13 @@ stop:
 ;(1) uses OvenButton to communicate ; 
   ;with the transistor to turn the 	;
   ;oven or off											;
-;(2) 															
-;
-;
+;(2) 																;
+;																		;
+;																		;
 ;-----------------------------------;
 	
-
 TurnOvenOff:
-	clear OvenButton
+	clr OvenButton	
   ret
 TurnOvenOn:
 	setb OvenButton
@@ -421,8 +493,8 @@ checkerror:
   lcall TurnOvenOff
   
 noerror:
-  pop acc
-  pop psw 
+  pop psw
+  pop acc 
 	ret
 	
 ;------------------------------;
@@ -450,18 +522,18 @@ readingcoldjunction: ;read the cold junction from the adc
 	Wait_Milli_Seconds(#250)
 	Wait_Milli_Seconds(#250)
   
-	lcall Calculate_Temp_in_Celcius 
+	lcall Calculate_Temp_in_C 
     mov a, x
     mov coldtemp, a
   
-	  pop acc
 	  pop psw
+	  pop acc
 	  ret   
 	   
 
-;Trying to trasfer the binary value in ADC into BCD and then into 
+;Trying to transfer the binary value in ADC into BCD and then into 
 ;ASCII to show in putty
-Calculate_Temp_in_Celcius: 	
+Calculate_Temp_in_C: 	
 	clr a 
 	Load_x(0)	; 
 	Load_y(0)
@@ -470,7 +542,7 @@ Calculate_Temp_in_Celcius:
 	mov X, a
 	mov a, Result+1
 	mov X+1, a
-	Load_Y (4096)
+	Load_Y (410)
 	lcall mul32;
 	Load_Y(1023)
 	lcall div32;  
@@ -485,17 +557,18 @@ Calculate_Temp_in_Celcius:
 
 
 ;------------------------------;
-; reading hot junction 		 ;
+; reading hot junction 	
+; from channel 1 		   ;
 ;------------------------------;
 readinghotjunction: ;read the hot junction from the adc from oven and thermocouple wires
 ;reading the adc
 	push acc
-    push psw
+  push psw
   
 	clr CE_ADC 
 	mov R0, #00000001B ; Start bit:1 
 	lcall DO_SPI_G
-	mov R0, #10000000B ; Single ended, read channel 0 
+	mov R0, #10010000B ; Single ended, read channel 1 
 	lcall DO_SPI_G 
 	mov a, R1          ; R1 contains bits 8 and 9 
 	anl a, #00000011B  ; We need only the two least significant bits 
@@ -512,34 +585,11 @@ readinghotjunction: ;read the hot junction from the adc from oven and thermocoup
     mov a, x
     mov hottemp, a
   
-	  pop acc
 	  pop psw
+	  pop acc
 	  ret   
 	  
-	
-;Trying to trasfer the binary value in ADC into BCD and then into 
-;ASCII to show in putty
-Calculate_Temp_in_Celcius: 	
-	clr a 
-	Load_x(0)	; 
-	Load_y(0)
-	; load the result into X 
-	mov a, Result+0
-	mov X, a
-	mov a, Result+1
-	mov X+1, a
-	Load_Y (4096)
-	lcall mul32;
-	Load_Y(1023)
-	lcall div32;  
-	;calculte temperature 
-	Load_Y(273)
-	mov temp, X
-	lcall sub32
-	lcall hex2bcd ; converts binary in x to BCD in BCD
-	lcall Display_Temp_LCD 
-;	lcall Display_Temp_Putty
-	ret
+
 
 	
 ; Display Temperature in Putty!
@@ -557,7 +607,7 @@ Display_Temp_LCD:
 ; show temp in Celcius 
 	Set_Cursor(1, 6);
 	Display_BCD(bcd+1)
-	Set_Cursor(1, 9); 
+	Set_Cursor(1, 9);  
 	ret
 
 
@@ -593,7 +643,6 @@ Menu_select2:
   Wait_Milli_Seconds(#50)
   jnb STARTBUTTON, FOREVER
   Wait_Milli_Seconds(#50)
-  
 	ljmp Menu_select2
   
 
@@ -611,27 +660,38 @@ Set_SoakTemp1:
   WriteCommand(#0x01)          ;clear display
   Wait_Milli_Seconds(#50)
   Set_Cursor(1, 1)
+  Send_Constant_String(#MenuSoakTemp)
+  Set_Cursor(2, 1)
 	Display_BCD(soaktemp)
 Set_SoakTemp2:
-	jnb BUTTON_1, SoakTemp_inc   ;might need a 'Jump_to'
+	jnb BUTTON_1, Jump_to_SoakTemp_inc
   Wait_Milli_Seconds(#50)
-	jnb BUTTON_1, SoakTemp_inc  
+	jnb BUTTON_1, Jump_to_SoakTemp_inc  
 	Wait_Milli_Seconds(#50)
-  jnb BUTTON_2, SoakTemp_dec  
+  jnb BUTTON_2, Jump_to_SoakTemp_dec
 	Wait_Milli_Seconds(#50)
-  jnb BUTTON_2, SoakTemp_dec 
+  jnb BUTTON_2, Jump_to_SoakTemp_dec
 	Wait_Milli_Seconds(#50)
-  jnb BUTTON_3, gobacktomenu1@@@@@@@@ ;set this later, might need more 'Jump_to' functions
+  jnb BUTTON_3, Jump_to_menu1
 	Wait_Milli_Seconds(#50)
-  jnb BOOT_BUTTON, gobacktomenu1@@@@@@@@ ;set this later
+  jnb BOOT_BUTTON, Jump_to_menu1
   ljmp Set_SoakTemp2
   
-SoakTemp_inc:   ;Can include some display message to indicate which setting we're on
+Jump_to_SoakTemp_inc:
+	ljmp SoakTemp_inc
+  
+Jump_to_SoakTemp_dec:
+	ljmp SoakTemp_dec
+
+Jump_to_menu1:
+	ljmp Menu_select1
+
+SoakTemp_inc:
 	mov a, soaktemp
   add a, #0x01
   da a
   mov soaktemp, a
-  Set_Cursor(1, 1)
+  Set_Cursor(2, 1)
   Display_BCD(soaktemp)
   ljmp Set_SoakTemp2
   
@@ -640,7 +700,7 @@ SoakTemp_dec:
 	add a, #0x99
 	da a
 	mov soaktemp, a
-	Set_Cursor(1, 1)
+	Set_Cursor(2, 1)
 	Display_BCD(soaktemp)
 	ljmp Set_SoakTemp2
 
@@ -649,27 +709,38 @@ Set_SoakTime1:
   WriteCommand(#0x01)          ;clear display
   Wait_Milli_Seconds(#50)
   Set_Cursor(1, 1)
+  Send_Constant_String(#MenuSoakTime)
+  Set_Cursor(2, 1)
 	Display_BCD(soaktime)
 Set_SoakTime2:
-	jnb BUTTON_1, SoakTime_inc
+	jnb BUTTON_1, Jump_to_SoakTime_inc
   Wait_Milli_Seconds(#50)
-	jnb BUTTON_1, SoakTime_inc  
+	jnb BUTTON_1, Jump_to_SoakTime_inc
 	Wait_Milli_Seconds(#50)
-  jnb BUTTON_2, SoakTime_dec  
+  jnb BUTTON_2, Jump_to_SoakTime_dec
 	Wait_Milli_Seconds(#50)
-  jnb BUTTON_2, SoakTime_dec 
+  jnb BUTTON_2, Jump_to_SoakTime_dec
 	Wait_Milli_Seconds(#50)
-  jnb BOOT_BUTTON, gobacktomenu1@@@@@@@@ ;set this later
+  jnb BOOT_BUTTON, Jump_to_menu1_2
 	Wait_Milli_Seconds(#50)
-  jnb BOOT_BUTTON, gobacktomenu1@@@@@@@@ ;set this later
+  jnb BOOT_BUTTON, Jump_to_menu1_2
   ljmp Set_SoakTime2
 
-SoakTime_inc:   ;Can include some display message to indicate which setting we're on
+Jump_to_SoakTime_inc:
+	ljmp SoakTime_inc
+
+Jump_to_SoakTime_dec:
+	ljmp SoakTime_dec
+  
+Jump_to_menu1_2:
+	ljmp Menu_select1
+
+SoakTime_inc:
 	mov a, soaktime
   add a, #0x01
   da a
   mov soaktime, a
-  Set_Cursor(1, 1)
+  Set_Cursor(2, 1)
   Display_BCD(soaktime)
   ljmp Set_SoakTime2
   
@@ -678,11 +749,11 @@ SoakTime_dec:
 	add a, #0x99
 	da a
 	mov soaktime, a
-	Set_Cursor(1, 1)
+	Set_Cursor(2, 1)
 	Display_BCD(soaktime)
 	ljmp Set_SoakTime2
 
-; Second set of Menu - Set eflow parameters
+; Second set of Menu - Set reflow parameters
 Menu_select3:
   WriteCommand(#0x01)
   Wait_Milli_Seconds(#50)
@@ -734,27 +805,36 @@ Set_ReflowTemp1:
   WriteCommand(#0x01)          ;clear display
   Wait_Milli_Seconds(#50)
   Set_Cursor(1, 1)
+  Send_Constant_String(#MenuReflowTemp)
+  Set_Cursor(2, 1)
 	Display_BCD(reflowtemp)
 Set_ReflowTemp2:
-	jnb BUTTON_1, ReflowTemp_inc
+	jnb BUTTON_1, Jump_to_ReflowTemp_inc
   Wait_Milli_Seconds(#50)
-	jnb BUTTON_1, ReflowTemp_inc  
+	jnb BUTTON_1, Jump_to_ReflowTemp_inc
 	Wait_Milli_Seconds(#50)
-  jnb BUTTON_2, ReflowTemp_dec  
+  jnb BUTTON_2, Jump_to_ReflowTemp_dec
 	Wait_Milli_Seconds(#50)
-  jnb BUTTON_2, ReflowTemp_dec 
+  jnb BUTTON_2, Jump_to_ReflowTemp_dec
 	Wait_Milli_Seconds(#50)
-  jnb BOOT_BUTTON, gobacktomenu3@@@@@@@@ ;set this later
+  jnb BOOT_BUTTON, Jump_to_menu3
 	Wait_Milli_Seconds(#50)
-  jnb BOOT_BUTTON, gobacktomenu3@@@@@@@@ ;set this later
+  jnb BOOT_BUTTON, Jump_to_menu3
   ljmp Set_ReflowTemp2
 
-ReflowTemp_inc:   ;Can include some display message to indicate which setting we're on
+Jump_to_ReflowTemp_inc:
+	ljmp ReflowTemp_inc
+Jump_to_ReflowTemp_dec:
+	ljmp ReflowTemp_dec
+Jump_to_menu3:
+	ljmp Menu_select3
+
+ReflowTemp_inc:
 	mov a, reflowtemp
   add a, #0x01
   da a
   mov reflowtemp, a
-  Set_Cursor(1, 1)
+  Set_Cursor(2, 1)
   Display_BCD(reflowtemp)
   ljmp Set_ReflowTemp2
   
@@ -763,7 +843,7 @@ ReflowTemp_dec:
 	add a, #0x99
 	da a
 	mov reflowtemp, a
-	Set_Cursor(1, 1)
+	Set_Cursor(2, 1)
 	Display_BCD(reflowtemp)
 	ljmp Set_ReflowTemp2
 
@@ -772,27 +852,37 @@ Set_ReflowTime1:
   WriteCommand(#0x01)          ;clear display
   Wait_Milli_Seconds(#50)
   Set_Cursor(1, 1)
+  Send_Constant_String(#MenuReflowTime)
+  Set_Cursor(2, 1)
 	Display_BCD(reflowtime)
+  
 Set_ReflowTime2:
-	jnb BUTTON_1, ReflowTime_inc
+	jnb BUTTON_1, Jump_to_ReflowTime_inc
   Wait_Milli_Seconds(#50)
-	jnb BUTTON_1, ReflowTime_inc  
+	jnb BUTTON_1, Jump_to_ReflowTime_inc  
 	Wait_Milli_Seconds(#50)
-  jnb BUTTON_2, ReflowTime_dec  
+  jnb BUTTON_2, Jump_to_ReflowTime_dec
 	Wait_Milli_Seconds(#50)
-  jnb BUTTON_2, ReflowTime_dec 
+  jnb BUTTON_2, Jump_to_ReflowTime_dec
 	Wait_Milli_Seconds(#50)
-  jnb BOOT_BUTTON, gobacktomenu3@@@@@@@@ ;set this later
+  jnb BOOT_BUTTON, Jump_to_menu3_2
 	Wait_Milli_Seconds(#50)
-  jnb BOOT_BUTTON, gobacktomenu3@@@@@@@@ ;set this later
+  jnb BOOT_BUTTON, Jump_to_menu3_2
   ljmp Set_ReflowTime2
 
-ReflowTime_inc:   ;Can include some display message to indicate which setting we're on
+Jump_to_ReflowTime_inc:
+	ljmp ReflowTime_inc
+Jump_to_ReflowTime_dec:
+	ljmp ReflowTime_dec
+Jump_to_menu3_2:
+	ljmp Menu_select3
+
+ReflowTime_inc:
 	mov a, reflowtime
   add a, #0x01
   da a
   mov reflowtime, a
-  Set_Cursor(1, 1)
+  Set_Cursor(2, 1)
   Display_BCD(reflowtime)
   ljmp Set_ReflowTime2
   
@@ -801,7 +891,7 @@ ReflowTime_dec:
 	add a, #0x99
 	da a
 	mov reflowtime, a
-	Set_Cursor(1, 1)
+	Set_Cursor(2, 1)
 	Display_BCD(reflowtime)
 	ljmp Set_ReflowTime2
 
