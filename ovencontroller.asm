@@ -90,13 +90,11 @@ LCD_D7 equ P3.5
 HIGH_TEMP EQU P3.6
 ; make sure that this is same with the rest of the ckt 
 OvenPin equ Px.x
-StartButton equ P0.2 
+StartButton equ P0.4 
 BUTTON_1 equ P0.3
-BUTTON_2 equ P0.4
+BUTTON_2 equ P0.2
 BUTTON_3 equ P0.7
 OvenButton equ P2.5
-
-
 
 
 $NOLIST
@@ -106,7 +104,6 @@ $LIST
 $NOLIST
 $include(math32.inc) ; A library of Lmath functions
 $LIST
-
 
 
 ; constant strings  
@@ -323,44 +320,65 @@ MainProgram:
     ljmp Menu_select1 ; selecting and setting profiles
     
 FOREVER: ;this will be how the oven is being controlled ; jump here once start button is pressed!!!
-	
+;------state 1 -------- ;	
    lcall checkstop
    lcall checkerror
    lcall Readingtemperatures
  	 lcall checkingsoaktemperature ; checking if we have reached Soak Temp yet
+   lcall State_change_BEEPER ; going to soak time state 
    clr tr2   			; restarting timer 2 to keep track of the time lasped since we reached soaktemp
    mov a, #0
    mov seconds, a
    
   ; after we reached the soak temp check for reflow temp 
+  ;-----state 2 ------;
 soaktempchecked:  
 	lcall checkstop
   lcall calctemperatures
-  lcall keepingsoaktempsame 
-  lcall checksoaktime
+  lcall keepingsoaktempsame ; boundary temp
+  lcall checksoaktime ; if soak time is up go to next state
   sjmp soaktempchecked
   
-increasereflowtemp:
+; ---- state 3 ---- ;
+increasereflowtemp: 
   lcall checkstop
   lcall calctemperatures
   lcall checkingreflowtemp ;loops back to increasereflowtemp until reflow temp is reached
+  lcall State_change_BEEPER
   clr tr2
   mov a, #0
   mov seconds, a
 
+  ;----state 4 ---;
+  reflowstate:
+  lcall checkstop
+  lcall calctemperatures
+  lcall keepingreflowtempsame
+  lcall checksoaktime
+  sjmp reflowstate
   
-  
-	ljmp FOREVER
-  
-;---------------------------------;
-; END 											      ;
-;---------------------------------; 
-
+ ;------- state5-----;
+ cooling:
+ lcall calctemperatures
+ lcall waitforcooling
+ lcall Open_oven_toaster_BEEPER
+ 
+ ljmp Menu_select1 
   
 ;---------------------------------;
 ; functions						 				    ;
 ;---------------------------------; 
 
+waitforcooling:
+	load_X(temperature)
+  load_Y(60)
+  lcall x_gteq_y   ; compare if temp >= 60 
+  jnb mf, cooled
+  ljmp cooling
+cooled:
+	ret
+
+; *********** STATE 2 **********
 ; After reaching the soak temperature we stay at that temp 
 ; for 60 to 120 seconds
 
@@ -391,14 +409,40 @@ soaktemptoolow:
 	lcall TurnOvenOn
   ret
   
+ keepingreflowtempsame:
+	; temp <= soaktemp+10
+  load_X(10)
+  load_Y(reflowtemp)
+  lcall add32		; upper bound for the straight line for the soak temp: soaktemp+10
+  load_Y(temperature)
+  lcall x_gteq_y   ; compare if temp <= soaktemp + 10
+  jnb mf, soaktemptoolow; if mf!=1 then keep checking 
+  
+  ; temp>= soaktemp-10
+  load_Y(10)
+  load_X(reflowtemp)
+  lcall sub32		; lower bound for the straight line for the soak temp: soaktemp-10
+  load_Y(temperature)
+  lcall x_gteq_y   ; compare if temp <= soaktemp - 10 
+  jnb mf, soaktemptoolow; if mf!=1 then keep checking 
+  ljmp soaktempisokay
+  
+
 checksoaktime:
 	mov a, seconds
-  cjne a, soaktemptime, soaknotdone
+  cjne a, soaktime, soaknotdone
   lcall TurnOvenOff
- ljmp increasereflowtemp
+  ljmp increasereflowtemp
 soaknotdone:
 	ret 
-
+  
+checkreflowtime:
+	mov a, seconds
+  cjne a, reflowtime,reflownotdone
+  lcall TurnOvenOff
+  ljmp cooling
+reflownotdone:
+	ret
 
 ; reading the thermocouple junction values 
 Readingtemperatures:
@@ -411,7 +455,7 @@ Readingtemperatures:
   mov temperature, a ;final temperature is in the temperature variable
   ret
 
-; checking if the tremperture at the hot end is equal to soak temp yet
+; checking if the temperture at the hot end is equal to soak temp yet
 checkingsoaktemperature: 
   load_X(temperature)
   load_Y(soaktemp)
@@ -454,28 +498,35 @@ TurnOvenOn:
 
 
 ;beeper function to indicate reflow process has started
-; needs to be called in order to use.
-; 
-Reflow_start:
+Reflow_start_BEEPER:
  setb BEEPER
  cpl BEEPER
- Wait_Milli_Seconds(#500)
+ Wait_Milli_Seconds(#250)
+ Wait_Milli_Seconds(#250)
  clr BEEPER
  ret
  
-State_change:
+State_change_BEEPER:
  setb BEEPER
  cpl BEEPER
- Wait_Milli_Seconds(#500)
+ Wait_Milli_Seconds(#250)
+ Wait_Milli_Seconds(#250)
  clr BEEPER
  ret
  
-Open_toaster_oven:
+Open_toaster_oven_BEEPER:
+ clr a ; c=0
+loop6times: 
+ cjne a, #6 
+ ret
+ beep: 
  setb BEEPER
  cpl BEEPER
- Wait_Milli_Seconds(#5000)
+ Wait_Milli_Seconds(#100)
  clr BEEPER
- ret
+ inc a 
+ sjmp loop6times
+ ;ret
  
 ;As a safety measure, the reflow process must be aborted if the oven doesn’t reach at least 50oC in the first 60 seconds of operation
 checkerror: 
@@ -618,39 +669,45 @@ Menu_select1:
   WriteCommand(#0x01)
   Wait_Milli_Seconds(#50)
 Menu_select2:
-	Set_Cursor(1, 1)
+Set_Cursor(1, 1)
   Send_Constant_String(#MenuMessage1)
-	Set_Cursor(2, 1)
+  Set_Cursor(2, 1)
   Send_Constant_String(#MenuMessage2)
-	Wait_Milli_Seconds(#50)
   
-  jnb BUTTON_1, Jump_to_Set_SoakTemp1     ;go to set Soak Temperature
-	Wait_Milli_Seconds(#50)
-  jnb BUTTON_1, Jump_to_Set_SoakTemp1
-  Wait_Milli_Seconds(#50)
+  Wait_Milli_Seconds(#50) ;go to set Soak Temperature
+  jb BUTTON_1, Menu_select2_2
+  jnb BUTTON_1, $
+  ljmp Jump_to_Set_SoakTemp1
   
-  jnb BUTTON_2, Jump_to_Set_SoakTime1    ;go to set Soak Time
-  Wait_Milli_Seconds(#50)
-  jnb BUTTON_2, Jump_to_Set_SoakTime1
-  Wait_Milli_Seconds(#50)
+Menu_select2_2:
+  Wait_Milli_Seconds(#50) ;go to set Soak Time
+  jb BUTTON_2, Menu_select2_3
+  jnb BUTTON_2, $
+  ljmp Jump_to_Set_SoakTime1
   
-	jnb BUTTON_3, Jump_to_Menu_select3   ;go to second set of menus
-	Wait_Milli_Seconds(#50)
-  jnb BUTTON_3, Jump_to_Menu_select3
-  Wait_Milli_Seconds(#50)
+Menu_select2_3:
+  Wait_Milli_Seconds(#50) ;go to second set of menus
+  jb BUTTON_3, Menu_select2_4
+  jnb BUTTON_3, $
+  ljmp Jump_to_Menu_select3
   
-  jnb STARTBUTTON, FOREVER         ; start the reflow process
-  Wait_Milli_Seconds(#50)
-  jnb STARTBUTTON, FOREVER
-  Wait_Milli_Seconds(#50)
-	ljmp Menu_select2
+Menu_select2_4:
+  Wait_Milli_Seconds(#50)   ; start the reflow process
+  jb StartButton, Jump_to_Menu_select2_1
+  jnb StartButton, $
+  ljmp Jump_To_FOREVER
   
+Jump_To_FOREVER:
+	ljmp FOREVER
 
 Jump_to_Set_SoakTemp1:
 	ljmp Set_SoakTemp1
   
 Jump_to_Set_SoakTime1:
 	ljmp Set_SoakTime1
+	
+Jump_to_Menu_select2_1:
+	ljmp Menu_select2
   
 Jump_to_Menu_select3:
 	ljmp Menu_select3
@@ -664,30 +721,25 @@ Set_SoakTemp1:
   Set_Cursor(2, 1)
 	Display_BCD(soaktemp)
 Set_SoakTemp2:
-	jnb BUTTON_1, Jump_to_SoakTemp_inc
+  jb BUTTON_1, Set_SoakTemp2_2
   Wait_Milli_Seconds(#50)
-	jnb BUTTON_1, Jump_to_SoakTemp_inc  
-	Wait_Milli_Seconds(#50)
-  jnb BUTTON_2, Jump_to_SoakTemp_dec
-	Wait_Milli_Seconds(#50)
-  jnb BUTTON_2, Jump_to_SoakTemp_dec
-	Wait_Milli_Seconds(#50)
-  jnb BUTTON_3, Jump_to_menu1
-	Wait_Milli_Seconds(#50)
-  jnb BOOT_BUTTON, Jump_to_menu1
+  jb BUTTON_1, Set_SoakTemp2_2
+  ljmp SoakTemp_inc
+Set_SoakTemp2_2:
+  jb BUTTON_2, Set_SoakTemp2_3
+  Wait_Milli_Seconds(#50)
+  jb BUTTON_2, Set_SoakTemp2_3
+  ljmp SoakTemp_dec
+Set_SoakTemp2_3:
+	jb BUTTON_3, Set_SoakTemp2_4
+  Wait_Milli_Seconds(#50)
+  jb BUTTON_3, Set_SoakTemp2_4
+  ljmp Menu_select1
+Set_SoakTemp2_4:
   ljmp Set_SoakTemp2
   
-Jump_to_SoakTemp_inc:
-	ljmp SoakTemp_inc
-  
-Jump_to_SoakTemp_dec:
-	ljmp SoakTemp_dec
-
-Jump_to_menu1:
-	ljmp Menu_select1
-
 SoakTemp_inc:
-	mov a, soaktemp
+  mov a, soaktemp
   add a, #0x01
   da a
   mov soaktemp, a
@@ -713,27 +765,22 @@ Set_SoakTime1:
   Set_Cursor(2, 1)
 	Display_BCD(soaktime)
 Set_SoakTime2:
-	jnb BUTTON_1, Jump_to_SoakTime_inc
+  jb BUTTON_1, Set_SoakTime2_2
   Wait_Milli_Seconds(#50)
-	jnb BUTTON_1, Jump_to_SoakTime_inc
-	Wait_Milli_Seconds(#50)
-  jnb BUTTON_2, Jump_to_SoakTime_dec
-	Wait_Milli_Seconds(#50)
-  jnb BUTTON_2, Jump_to_SoakTime_dec
-	Wait_Milli_Seconds(#50)
-  jnb BOOT_BUTTON, Jump_to_menu1_2
-	Wait_Milli_Seconds(#50)
-  jnb BOOT_BUTTON, Jump_to_menu1_2
+  jb BUTTON_1, Set_SoakTime2_2
+  ljmp SoakTime_inc
+Set_SoakTime2_2:
+  jb BUTTON_2, Set_SoakTime2_3
+  Wait_Milli_Seconds(#50)
+  jb BUTTON_2, Set_SoakTime2_3
+  ljmp SoakTime_dec
+Set_SoakTime2_3:
+	jb BUTTON_3, Set_SoakTime2_4
+  Wait_Milli_Seconds(#50)
+  jb BUTTON_3, Set_SoakTime2_4
+  ljmp Menu_select1
+Set_SoakTime2_4:
   ljmp Set_SoakTime2
-
-Jump_to_SoakTime_inc:
-	ljmp SoakTime_inc
-
-Jump_to_SoakTime_dec:
-	ljmp SoakTime_dec
-  
-Jump_to_menu1_2:
-	ljmp Menu_select1
 
 SoakTime_inc:
 	mov a, soaktime
@@ -762,43 +809,45 @@ Menu_select4:
   Send_Constant_String(#MenuMessage3)
 	Set_Cursor(2, 1)
   Send_Constant_String(#MenuMessage4)
-	Wait_Milli_Seconds(#50)
   
-  jnb BUTTON_1, Jump_to_Set_ReflowTemp1     ;go to set Soak Temperature
-	Wait_Milli_Seconds(#50)
-  jnb BUTTON_1, Jump_to_Set_ReflowTemp1
-  Wait_Milli_Seconds(#50)
+   Wait_Milli_Seconds(#50) ;go to set Reflow Temperature
+  jb BUTTON_1, Menu_select4_2
+  jnb BUTTON_1, $
+  ljmp Jump_to_Set_ReflowTemp1
   
-  jnb BUTTON_2, Jump_to_Set_ReflowTime1    ;go to set Soak Time
-  Wait_Milli_Seconds(#50)
-  jnb BUTTON_2, Jump_to_Set_ReflowTime1
-  Wait_Milli_Seconds(#50)
+Menu_select4_2:
+  Wait_Milli_Seconds(#50) ;go to set Reflow Time
+  jb BUTTON_2, Menu_select4_3
+  jnb BUTTON_2, $
+  ljmp Jump_to_Set_ReflowTime1
   
-	jnb BUTTON_3, Jump_to_Menu_select2   ;go to second set of menus
-	Wait_Milli_Seconds(#50)
-  jnb BUTTON_3, Jump_to_Menu_select2
+Menu_select4_3:
+  Wait_Milli_Seconds(#50) ;go to first set of menus
+  jb BUTTON_3, Menu_select4_4
+  jnb BUTTON_3, $
+  ljmp Jump_to_Menu_select2
+
+Menu_select4_4:
+  Wait_Milli_Seconds(#50)   ; start the reflow process
+  jb StartButton, Jump_to_Menu_select3_1
+  jnb StartButton, $
+  ljmp Jump_To_FOREVER2
+
+Jump_To_FOREVER2:
+	ljmp FOREVER
   
-  jnb STARTBUTTON, starttimer         ; start the reflow process
-  Wait_Milli_Seconds(#50)
-  jnb STARTBUTTON, starttimer
-  Wait_Milli_Seconds(#50)
-  sjmp jumped
- 
-starttimer:
-  lcall Timer2_Init
-  ljmp FOREVER
- 
-jumpmed:  
-	ljmp Menu_select4
 
 Jump_to_Set_ReflowTemp1:
 	ljmp Set_ReflowTemp1
   
 Jump_to_Set_ReflowTime1:
 	ljmp Set_ReflowTime1
+	
+Jump_to_Menu_select3_1:
+	ljmp Menu_select4
   
 Jump_to_Menu_select2:
-	ljmp Menu_select2
+	ljmp Menu_select1
   
 ; Settings - Reflow Temperature
 Set_ReflowTemp1:
@@ -809,25 +858,22 @@ Set_ReflowTemp1:
   Set_Cursor(2, 1)
 	Display_BCD(reflowtemp)
 Set_ReflowTemp2:
-	jnb BUTTON_1, Jump_to_ReflowTemp_inc
+  jb BUTTON_1, Set_ReflowTemp2_2
   Wait_Milli_Seconds(#50)
-	jnb BUTTON_1, Jump_to_ReflowTemp_inc
-	Wait_Milli_Seconds(#50)
-  jnb BUTTON_2, Jump_to_ReflowTemp_dec
-	Wait_Milli_Seconds(#50)
-  jnb BUTTON_2, Jump_to_ReflowTemp_dec
-	Wait_Milli_Seconds(#50)
-  jnb BOOT_BUTTON, Jump_to_menu3
-	Wait_Milli_Seconds(#50)
-  jnb BOOT_BUTTON, Jump_to_menu3
+  jb BUTTON_1, Set_ReflowTemp2_2
+  ljmp ReflowTemp_inc
+Set_ReflowTemp2_2:
+  jb BUTTON_2, Set_ReflowTemp2_3
+  Wait_Milli_Seconds(#50)
+  jb BUTTON_2, Set_ReflowTemp2_3
+  ljmp ReflowTemp_dec
+Set_ReflowTemp2_3:
+	jb BUTTON_3, Set_ReflowTemp2_4
+  Wait_Milli_Seconds(#50)
+  jb BUTTON_3, Set_ReflowTemp2_4
+  ljmp Menu_select3
+Set_ReflowTemp2_4:
   ljmp Set_ReflowTemp2
-
-Jump_to_ReflowTemp_inc:
-	ljmp ReflowTemp_inc
-Jump_to_ReflowTemp_dec:
-	ljmp ReflowTemp_dec
-Jump_to_menu3:
-	ljmp Menu_select3
 
 ReflowTemp_inc:
 	mov a, reflowtemp
@@ -847,6 +893,7 @@ ReflowTemp_dec:
 	Display_BCD(reflowtemp)
 	ljmp Set_ReflowTemp2
 
+
 ; Settings - Reflow Time
 Set_ReflowTime1:
   WriteCommand(#0x01)          ;clear display
@@ -855,27 +902,23 @@ Set_ReflowTime1:
   Send_Constant_String(#MenuReflowTime)
   Set_Cursor(2, 1)
 	Display_BCD(reflowtime)
-  
 Set_ReflowTime2:
-	jnb BUTTON_1, Jump_to_ReflowTime_inc
+  jb BUTTON_1, Set_ReflowTime2_2
   Wait_Milli_Seconds(#50)
-	jnb BUTTON_1, Jump_to_ReflowTime_inc  
-	Wait_Milli_Seconds(#50)
-  jnb BUTTON_2, Jump_to_ReflowTime_dec
-	Wait_Milli_Seconds(#50)
-  jnb BUTTON_2, Jump_to_ReflowTime_dec
-	Wait_Milli_Seconds(#50)
-  jnb BOOT_BUTTON, Jump_to_menu3_2
-	Wait_Milli_Seconds(#50)
-  jnb BOOT_BUTTON, Jump_to_menu3_2
+  jb BUTTON_1, Set_ReflowTime2_2
+  ljmp ReflowTime_inc
+Set_ReflowTime2_2:
+  jb BUTTON_2, Set_ReflowTime2_3
+  Wait_Milli_Seconds(#50)
+  jb BUTTON_2, Set_ReflowTime2_3
+  ljmp ReflowTime_dec
+Set_ReflowTime2_3:
+	jb BUTTON_3, Set_ReflowTime2_4
+  Wait_Milli_Seconds(#50)
+  jb BUTTON_3, Set_ReflowTime2_4
+  ljmp Menu_select3
+Set_ReflowTime2_4:
   ljmp Set_ReflowTime2
-
-Jump_to_ReflowTime_inc:
-	ljmp ReflowTime_inc
-Jump_to_ReflowTime_dec:
-	ljmp ReflowTime_dec
-Jump_to_menu3_2:
-	ljmp Menu_select3
 
 ReflowTime_inc:
 	mov a, reflowtime
@@ -896,7 +939,3 @@ ReflowTime_dec:
 	ljmp Set_ReflowTime2
 
 END
-
-
-
-
