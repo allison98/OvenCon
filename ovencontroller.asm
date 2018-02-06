@@ -114,6 +114,10 @@ MenuSoakTemp: db 'Soak Temp:', 0  ;used when changing parameter
 MenuSoakTime: db 'Soak Time:', 0
 MenuReflowTemp: db 'Reflow Temp:', 0
 MenuReflowTime: db 'Reflow Time:', 0
+ReflowState: db 'Reflow State', 0
+SoakState: db 'Soak State', 0
+TemperatureRise: db 'Temp. Inrease',0
+CoolingTemp: db 'Oven is cooling.',0
 
 
 ;---------------------------------;
@@ -304,10 +308,10 @@ MainProgram:
     mov countererror, #0	; to check if the thermocouple is in the oven
 		
     ;initial message 
-    Set_Cursor(1, 1)
-    Send_Constant_String(#Test_msg)
-    Set_Cursor(1,11)
-    WriteData(#223) ; print the degree sign   
+   ; Set_Cursor(1, 1)
+   ; Send_Constant_String(#Test_msg)
+   ; Set_Cursor(1,11)
+   ; WriteData(#223) ; print the degree sign   
     
     lcall InitSerialPort
 		lcall INIT_SPI
@@ -317,28 +321,38 @@ MainProgram:
     
 FOREVER: ;this will be how the oven is being controlled ; jump here once start button is pressed!!!
 ;------state 1 -------- ;	
+   Set_Cursor(1,1)
+   Send_Constant_String(#TemperatureRise)
    lcall checkstop       ;checks if stop button is pressed. If so, turns off oven and goes back to menu
    lcall checkerror      ;if error, terminate program and return
    lcall Readingtemperatures  ;calculates temperature of oven using thermocouple junctions
+   lcall DisplayingLCD
    lcall checkingsoaktemperature ; checking if we have reached Soak Temp yet
    lcall State_change_BEEPER ; temp = soak temp, so going to soak time state 
    clr tr2   			; restarting timer 2 to keep track of the time lasped since we reached soaktemp
    mov a, #0
    mov seconds, a
    
-  ; after we reached the soak temp check for reflow temp 
+   
+  ; after we reached the soak temp stay there for __ seconds
   ;-----state 2 ------;
-soaktempchecked:  
-	lcall checkstop
-  lcall Readingtemperatures
+soaktempchecked:
+	Set_Cursor(1,1)
+   Send_Constant_String(#SoakState)  
+	lcall checkstop	
+   lcall Readingtemperatures
+   lcall DisplayingLCD
   lcall keepingsoaktempsame ; boundary temp
   lcall checksoaktime ; if soak time is up go to next state
   sjmp soaktempchecked
   
-; ---- state 3 ---- ;
+; ---- state 3 ---- ; increaseing to reflow temp
 increasereflowtemp: 
   lcall checkstop
+  	Set_Cursor(1,1)
+   Send_Constant_String(#TemperatureRise) 
   lcall Readingtemperatures
+   lcall DisplayingLCD
   lcall checkingreflowtemp
   lcall State_change_BEEPER
   clr tr2
@@ -349,13 +363,19 @@ increasereflowtemp:
   reflowstate:
   lcall checkstop
   lcall Readingtemperatures
+   lcall DisplayingLCD
+   	Set_Cursor(1,1)
+   Send_Constant_String(#ReflowState) 
   lcall keepingreflowtempsame
   lcall checkreflowtime
   sjmp reflowstate
   
  ;------- state5-----;
  cooling:
- lcall calctemperatures
+ 	Set_Cursor(1,1)
+   Send_Constant_String(#CoolingTemp) 
+ lcall Readingtemperatures
+  lcall DisplayingLCD
  lcall waitforcooling
  lcall Open_oven_toaster_BEEPER
  
@@ -484,7 +504,7 @@ return:
   ret
 stop:
 	lcall TurnOvenOff
-  ljmp Menu_select1
+    ljmp Menu_select1
 
   
 ;---------------------------------- ;
@@ -505,7 +525,20 @@ TurnOvenOn:
 	setb OvenButton
   ret
 
-
+DisplayingLCD:
+	Set_Cursor(2,1)
+	Display_BCD(second)
+	
+	Display_BCD(temperature)
+	Set_Cursor(2,15)
+    WriteData(#0xDF)
+    Set_Cursor(2,16)
+    WriteData(#'C')
+    
+    ret
+    
+    
+	
 
 ;beeper function to indicate reflow process has started
 Reflow_start_BEEPER:
@@ -676,7 +709,7 @@ Display_Temp_LCD:
 
 
 ;--------------------------------------;
-; Menu - Set soak parameters         	 ;
+; Menu - Set soak parameters           ;
 ;--------------------------------------;
 Menu_select1:  
   WriteCommand(#0x01)
