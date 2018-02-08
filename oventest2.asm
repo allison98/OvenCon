@@ -58,7 +58,7 @@ x:   ds 4
 y:   ds 4
 bcd: ds 5
 Result: ds 2
-coldtemp: ds 4
+coldtemp: ds 1
 hottemp:ds 4
 soaktemp: ds 1
 soaktime: ds 1
@@ -71,6 +71,7 @@ reflowparam: ds 1
 second: ds 1
 minute: ds 1
 temp: ds 1
+count: ds 1
 
 BSEG
 startflag: dbit 1
@@ -112,7 +113,7 @@ MenuReflowTemp: db 'Reflow Temp:', 0
 MenuReflowTime: db 'Reflow Time:', 0
 ReflowStateMess: db 'Reflow State', 0
 SoakState: db 'Soak State', 0
-TemperatureRise: db 'Temp. Inrease',0
+TemperatureRise: db 'Temp. Increase',0
 CoolingTemp: db 'Oven is cooling.',0
 
 
@@ -297,10 +298,10 @@ MainProgram:
     mov P0M1, #0
     setb EA 
     lcall LCD_4BIT
-    mov soaktemp, #0x50
-    mov soaktime, #0x30
-    mov reflowtemp, #0x80
-    mov reflowtime, #0x30
+    mov soaktemp, #50
+    mov soaktime, #0x65
+    mov reflowtemp, #70
+    mov reflowtime, #0x60
     mov second, #0
    ; mov countererror, #0	; to check if the thermocouple is in the oven
 		
@@ -309,6 +310,7 @@ MainProgram:
    ; Send_Constant_String(#Test_msg)
    ; Set_Cursor(1,11)
    ; WriteData(#223) ; print the degree sign   
+ 
     
     lcall InitSerialPort
 		lcall INIT_SPI
@@ -324,10 +326,11 @@ FOREVER: ;this will be how the oven is being controlled ; jump here once start b
    ;lcall checkerror      ;if error, terminate program and return
    lcall Readingtemperatures  ;calculates temperature of oven using thermocouple junctions
    lcall DisplayingLCD
+
    lcall checkingsoaktemperature ; checking if we have reached Soak Temp yet
   ; lcall State_change_BEEPER ; temp = soak temp, so going to soak time state 
    clr tr2   			; restarting timer 2 to keep track of the time lasped since we reached soaktemp
-   mov a, #0
+   mov a, #0x0
    mov second, a
    setb tr2
    
@@ -341,6 +344,7 @@ soaktempchecked:
    lcall Readingtemperatures
    lcall DisplayingLCD
   lcall keepingsoaktempsame ; boundary temp
+  lcall keepingsoaktempsame1
   lcall checksoaktime ; if soak time is up go to next state
   sjmp soaktempchecked
   
@@ -366,6 +370,7 @@ increasereflowtemp:
    	Set_Cursor(1,1)
    Send_Constant_String(#ReflowStateMess) 
   lcall keepingreflowtempsame
+  lcall keepingreflowtempsame1
   lcall checkreflowtime
   sjmp reflowstate
   
@@ -385,11 +390,22 @@ increasereflowtemp:
 ;---------------------------------; 
 
 waitforcooling:
-	load_X(coldtemp)
-  load_Y(60)
-  lcall x_gteq_y   ; compare if temp >= 60 
-  jnb mf, cooled
+
+
+  clr c
+  mov a, #60
+  subb a, coldtemp
+  jnc cooled
   ljmp cooling
+  
+  
+;	load_X(coldtemp)
+;  load_Y(60)
+;  lcall x_gteq_y   ; compare if temp >= 60 
+;  jnb mf, cooled
+;  ljmp cooling
+  
+ 
 cooled:
 	ret
 
@@ -398,21 +414,34 @@ cooled:
 ; for 60 to 120 seconds
 
 keepingsoaktempsame:
-	; temp <= soaktemp+10
-  load_X(10)
-  load_Y(soaktemp)
-  lcall add32		; upper bound for the straight line for the soak temp: soaktemp+10
-  load_Y(coldtemp)
-  lcall x_gteq_y   ; compare if temp <= soaktemp + 10
-  jnb mf, soaktemptoohigh; if mf!=1 then keep checking
+  mov a, soaktemp
+  add a, #5
+  mov x, a
+   
+  clr c
+  mov a, x
+  subb a, coldtemp
+  jnc soaktempisokay
+  ljmp soaktemptoohigh
+
+  ;load_Y(coldtemp)
+  ;lcall x_gteq_y   ; compare if temp <= soaktemp + 10
+ ; jnb mf, soaktemptoohigh; if mf!=1 then keep checking
+ 
+ keepingsoaktempsame1:
+	
+  mov a, soaktemp
+  clr c
+  subb a, #5
+  mov x, a
   
-  ; temp>= soaktemp-10
-  load_Y(10)
-  load_X(soaktemp)
-  lcall sub32		; lower bound for the straight line for the soak temp: soaktemp-10
-  load_Y(coldtemp)
-  lcall x_gteq_y   ; compare if temp <= soaktemp - 10 
-  jb mf, soaktemptoolow; if mf!=1 then keep checking
+  clr c
+  mov a, coldtemp
+  subb a, x
+  jnc soaktempisokay
+  ljmp soaktemptoolow
+  
+   
   
 soaktempisokay:
 	ret
@@ -420,33 +449,55 @@ soaktempisokay:
 soaktemptoohigh: 
   lcall TurnOvenOff
   ret
+  
 soaktemptoolow:
 	lcall TurnOvenOn
   ret
   
  keepingreflowtempsame:
-	; temp <= soaktemp+10
-  load_X(10)
-  load_Y(reflowtemp)
-  lcall add32		; upper bound for the straight line for the soak temp: soaktemp+10
-  load_Y(coldtemp)
-  lcall x_gteq_y   ; compare if temp <= soaktemp + 10
-  jnb mf, soaktemptoohigh; if mf!=1 then keep checking
+	; temp <=reflowtemp+10
+	
+ ; load_X(5)
+ ; load_Y(reflowtemp)
+ ; lcall add32		; upper bound for the straight line for the soak temp: soaktemp+10
+   
+    mov a, reflowtemp
+  add a, #5
+  mov x, a
+    
+  clr c
+  mov a, x
+  add a, coldtemp
+  jnc soaktempisokay
+  ljmp soaktemptoohigh
   
-  ; temp>= soaktemp-10
-  load_Y(10)
-  load_X(reflowtemp)
-  lcall sub32		; lower bound for the straight line for the soak temp: soaktemp-10
-  load_Y(coldtemp)
-  lcall x_gteq_y   ; compare if temp <= soaktemp - 10 
-  jb mf, soaktemptoolow; if mf!=1 then keep checking
-  ljmp soaktempisokay
+
+ 
+keepingreflowtempsame1:
+	
+  clr c
+  mov a, reflowtemp
+  subb a, #5
+  mov x, a
+  
+  clr c
+  mov a, coldtemp
+  subb a, x
+  jnc soaktempisokay
+  ljmp soaktemptoolow
+  
+ ; lower bound for the straight line for the soak temp: soaktemp-10
+;  load_Y(coldtemp)
+ ; lcall x_gteq_y   ; compare if temp <= soaktemp - 10 
+ ; jb mf, soaktemptoolow; if mf!=1 then keep checking
+ ; ljmp soaktempisokay
   
 
 checksoaktime:
 	mov a, second
   cjne a, soaktime, soaknotdone
-  lcall TurnOvenOff
+  lcall TurnOvenOn
+
   ljmp increasereflowtemp
 soaknotdone:
 	ret 
@@ -455,6 +506,7 @@ checkreflowtime:
 	mov a, second
   cjne a, reflowtime,reflownotdone
   lcall TurnOvenOff
+ 
   ljmp cooling
 reflownotdone:
 	ret
@@ -469,29 +521,30 @@ Readingtemperatures:
 
 ; checking if the temperture at the hot end is equal to soak temp yet
 checkingsoaktemperature: 
-  load_X(coldtemp)
-  load_Y(soaktemp)
-  lcall x_gteq_y   ; compare if temp >= soaktemp 
-  jnb mf, Jump_to_FOREVER ; if mf!=1 then keep checking
-  ;this is what it should do if soaktemperature = actual tempreature  
-  Set_cursor(2,4)
-  Display_BCD(#2)   
+ 
+  clr c
+  mov a, soaktemp
+  subb a, coldtemp
+  jnc Jump_to_FOREVER 
   lcall TurnOvenOff
   ret
 
 Jump_to_FOREVER:
-	ljmp FOREVER
+	
+	jmp FOREVER
 
 ; checking if the temperture at the hot end is equal to reflow temp yet
 checkingreflowtemp: 
-  load_X(coldtemp)
-  load_Y(reflowtemp)
-  
-  lcall x_gteq_y   ; compare if temp >= reflowtemp 
-  jnb mf, Jump_to_FOREVER ; if mf!=1 then keep checking
-  ;this is what it should do if reflowtemperature = actual tempreature     
+  clr c
+  mov a, reflowtemp
+  subb a, coldtemp
+  jnc increasereflowtemp1
+   
   lcall TurnOvenOff
   ret
+  
+increasereflowtemp1:
+ljmp increasereflowtemp
 
  ;stop the process at any time  
 checkstop:                     ; stop the reflow process
@@ -527,9 +580,10 @@ DisplayingLCD:
 	Set_Cursor(2,1)
 	Display_BCD(second)
 	
-	Set_Cursor(2, 10)
+	Set_Cursor(2, 12)
 	mov x, coldtemp
 	lcall hex2bcd
+	
 	Display_BCD(bcd)
 	Set_Cursor(2,15)
     WriteData(#0xDF)
@@ -618,7 +672,7 @@ readingcoldjunction: ;read the cold junction from the adc
 	setb CE_ADC 
 	;wait for 1 second 
 	Wait_Milli_Seconds(#250)
-	Wait_Milli_Seconds(#250)
+;	Wait_Milli_Seconds(#250)
   
 	lcall Calculate_Temp_in_C 
     mov a, x
@@ -649,8 +703,8 @@ Calculate_Temp_in_C:
 	mov temp, X
 	lcall sub32
 	lcall hex2bcd ; converts binary in x to BCD in BCD
-	Set_Cursor(2, 13)
-	Display_BCD(bcd)
+	;Set_Cursor(2, 13)
+	;Display_BCD(bcd)
 ;	lcall Display_Temp_Putty
 	ret
 
