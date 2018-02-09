@@ -291,11 +291,6 @@ InitSerialPort:
 ; MAIN PROGRAM							      ;
 ;---------------------------------;  
 
-
-
-
-
-
 MainProgram:
 	mov sp, #07FH ; Initialize the stack pointer
 	; Configure P0 in bidirectional mode
@@ -304,9 +299,9 @@ MainProgram:
     setb EA 
     lcall LCD_4BIT
     mov soaktemp, #50
-    mov soaktime, #0x65
+    mov soaktime, #0x30
     mov reflowtemp, #70
-    mov reflowtime, #0x60
+    mov reflowtime, #0x30
     mov second, #0
    ; mov countererror, #0	; to check if the thermocouple is in the oven
 		
@@ -332,26 +327,21 @@ FOREVER: ;this will be how the oven is being controlled ; jump here once start b
    lcall Readingtemperatures  ;calculates temperature of oven using thermocouple junctions
    lcall DisplayingLCD
 
-   lcall cst ; checking if we have reached Soak Temp yet
+   ;lcall cst ; checking if we have reached Soak Temp yet
   ; lcall State_change_BEEPER ; temp = soak temp, so going to soak time state 
-   clr tr2   			; restarting timer 2 to keep track of the time lasped since we reached soaktemp
-   mov a, #0x0
-   mov second, a
-   setb tr2
-   sjmp skiped
- 
- cst: 
+  
   mov a, coldtemp
   mov b, soaktemp
   div AB
   mov a,b 
   cjne a, #0, FOREVER
-  lcall TurnOvenOn
-  ret
+  lcall TurnOvenOff
   
-
-
-	
+   clr tr2   			; restarting timer 2 to keep track of the time lasped since we reached soaktemp
+   mov a, #0x0
+   mov second, a
+   setb tr2
+   sjmp skiped
  
  skiped:
   ; after we reached the soak temp stay there for __ seconds
@@ -374,7 +364,16 @@ increasereflowtemp:
    Send_Constant_String(#TemperatureRise) 
   lcall Readingtemperatures
    lcall DisplayingLCD
-  lcall checkingreflowtemp
+   
+
+  clr c
+  mov a, reflowtemp
+  subb a, coldtemp
+  jnc increasereflowtemp
+   
+  lcall TurnOvenOff  
+   
+ ; lcall checkingreflowtemp
  ; lcall State_change_BEEPER
   clr tr2
   mov a, #0
@@ -477,32 +476,27 @@ soaktemptoolow:
   ret
   
  keepingreflowtempsame:
-	; temp <=reflowtemp+10
-	
- ; load_X(5)
- ; load_Y(reflowtemp)
- ; lcall add32		; upper bound for the straight line for the soak temp: soaktemp+10
-   
-    mov a, reflowtemp
+  mov a, reflowtemp
   add a, #5
   mov x, a
-    
+   
   clr c
   mov a, x
-  add a, coldtemp
+  subb a, coldtemp
   jnc soaktempisokay
   ljmp soaktemptoohigh
-  
+
   ;load_Y(coldtemp)
   ;lcall x_gteq_y   ; compare if temp <= soaktemp + 10
  ; jnb mf, soaktemptoohigh; if mf!=1 then keep checking
+ 
  keepingreflowtempsame1:
   ; temp>= soaktemp-10
-  ;load_Y(5)
-  ;load_X(reflowtemp)
-  ;lcall sub32	
-  clr c
+ ; load_Y(5)
+ ; load_X(soaktemp)
+ ; lcall sub32	
   mov a, reflowtemp
+  clr c
   subb a, #5
   mov x, a
   
@@ -565,23 +559,7 @@ Jump_to_FOREVER:
 	ljmp FOREVER
 
 ; checking if the temperture at the hot end is equal to reflow temp yet
-checkingreflowtemp: 
-  clr c
-  mov a, reflowtemp
-  subb a, coldtemp
-  jnc increasereflowtemp1
-   
 
-  ;load_X(coldtemp)
-  ;load_Y(reflowtemp)
-  
- ; lcall x_gteq_y   ; compare if temp >= reflowtemp 
- ; jnb mf, Jump_to_FOREVER ; if mf!=1 then keep checking
-  ;this is what it should do if reflowtemperature = actual tempreature     
-  lcall TurnOvenOff
-  ret
-increasereflowtemp1:
-ljmp increasereflowtemp
 
  ;stop the process at any time  
 checkstop:                     ; stop the reflow process
