@@ -291,6 +291,11 @@ InitSerialPort:
 ; MAIN PROGRAM							      ;
 ;---------------------------------;  
 
+
+
+
+
+
 MainProgram:
 	mov sp, #07FH ; Initialize the stack pointer
 	; Configure P0 in bidirectional mode
@@ -310,7 +315,7 @@ MainProgram:
    ; Send_Constant_String(#Test_msg)
    ; Set_Cursor(1,11)
    ; WriteData(#223) ; print the degree sign   
- 
+    mov count, #0
     
     lcall InitSerialPort
 		lcall INIT_SPI
@@ -327,14 +332,28 @@ FOREVER: ;this will be how the oven is being controlled ; jump here once start b
    lcall Readingtemperatures  ;calculates temperature of oven using thermocouple junctions
    lcall DisplayingLCD
 
-   lcall checkingsoaktemperature ; checking if we have reached Soak Temp yet
+   lcall cst ; checking if we have reached Soak Temp yet
   ; lcall State_change_BEEPER ; temp = soak temp, so going to soak time state 
    clr tr2   			; restarting timer 2 to keep track of the time lasped since we reached soaktemp
    mov a, #0x0
    mov second, a
    setb tr2
-   
-   
+   sjmp skiped
+ 
+ cst: 
+  mov a, coldtemp
+  mov b, soaktemp
+  div AB
+  mov a,b 
+  cjne a, #0, FOREVER
+  lcall TurnOvenOn
+  ret
+  
+
+
+	
+ 
+ skiped:
   ; after we reached the soak temp stay there for __ seconds
   ;-----state 2 ------;
 soaktempchecked:
@@ -356,7 +375,7 @@ increasereflowtemp:
   lcall Readingtemperatures
    lcall DisplayingLCD
   lcall checkingreflowtemp
-  lcall State_change_BEEPER
+ ; lcall State_change_BEEPER
   clr tr2
   mov a, #0
   mov second, a
@@ -381,7 +400,7 @@ increasereflowtemp:
  lcall Readingtemperatures
   lcall DisplayingLCD
  lcall waitforcooling
- lcall Open_oven_toaster_BEEPER
+; lcall Open_oven_toaster_BEEPER
  
  ljmp $
   
@@ -429,7 +448,10 @@ keepingsoaktempsame:
  ; jnb mf, soaktemptoohigh; if mf!=1 then keep checking
  
  keepingsoaktempsame1:
-	
+  ; temp>= soaktemp-10
+ ; load_Y(5)
+ ; load_X(soaktemp)
+ ; lcall sub32	
   mov a, soaktemp
   clr c
   subb a, #5
@@ -471,10 +493,14 @@ soaktemptoolow:
   jnc soaktempisokay
   ljmp soaktemptoohigh
   
-
- 
-keepingreflowtempsame1:
-	
+  ;load_Y(coldtemp)
+  ;lcall x_gteq_y   ; compare if temp <= soaktemp + 10
+ ; jnb mf, soaktemptoohigh; if mf!=1 then keep checking
+ keepingreflowtempsame1:
+  ; temp>= soaktemp-10
+  ;load_Y(5)
+  ;load_X(reflowtemp)
+  ;lcall sub32	
   clr c
   mov a, reflowtemp
   subb a, #5
@@ -497,7 +523,10 @@ checksoaktime:
 	mov a, second
   cjne a, soaktime, soaknotdone
   lcall TurnOvenOn
-
+  clr tr2
+  mov a, #0
+  mov second, a
+  setb tr2
   ljmp increasereflowtemp
 soaknotdone:
 	ret 
@@ -506,7 +535,10 @@ checkreflowtime:
 	mov a, second
   cjne a, reflowtime,reflownotdone
   lcall TurnOvenOff
- 
+  clr tr2
+  mov a, #0
+  mov second, a
+  setb tr2
   ljmp cooling
 reflownotdone:
 	ret
@@ -520,18 +552,17 @@ Readingtemperatures:
   ret
 
 ; checking if the temperture at the hot end is equal to soak temp yet
-checkingsoaktemperature: 
- 
-  clr c
-  mov a, soaktemp
-  subb a, coldtemp
-  jnc Jump_to_FOREVER 
-  lcall TurnOvenOff
-  ret
 
+
+;checkingsoaktemperature: 
+;  clr c
+ ; mov a, soaktemp
+ ; subb a, coldtemp
+ ; jnc Jump_to_FOREVER  
+ ; lcall TurnOvenOff
+ ; ret
 Jump_to_FOREVER:
-	
-	jmp FOREVER
+	ljmp FOREVER
 
 ; checking if the temperture at the hot end is equal to reflow temp yet
 checkingreflowtemp: 
@@ -540,9 +571,15 @@ checkingreflowtemp:
   subb a, coldtemp
   jnc increasereflowtemp1
    
+
+  ;load_X(coldtemp)
+  ;load_Y(reflowtemp)
+  
+ ; lcall x_gteq_y   ; compare if temp >= reflowtemp 
+ ; jnb mf, Jump_to_FOREVER ; if mf!=1 then keep checking
+  ;this is what it should do if reflowtemperature = actual tempreature     
   lcall TurnOvenOff
   ret
-  
 increasereflowtemp1:
 ljmp increasereflowtemp
 
@@ -593,38 +630,7 @@ DisplayingLCD:
     ret
     
     
-	
 
-;beeper function to indicate reflow process has started
-Reflow_start_BEEPER:
- setb BEEPER
- cpl BEEPER
- Wait_Milli_Seconds(#250)
- Wait_Milli_Seconds(#250)
- clr BEEPER
- ret
- 
-State_change_BEEPER:
- setb BEEPER
- cpl BEEPER
- Wait_Milli_Seconds(#250)
- Wait_Milli_Seconds(#250)
- clr BEEPER
- ret
- 
-Open_oven_toaster_BEEPER:
- clr a ; c=0
-loop6times: 
- cjne a, #6, beep
- ret
- beep: 
- setb BEEPER
- cpl BEEPER
- Wait_Milli_Seconds(#100)
- clr BEEPER
- inc a 
- sjmp loop6times
- ;ret
 
 
 ;As a safety measure, the reflow process must be aborted if the oven doesn’t reach at least 50oC in the first 60 seconds of operation
@@ -632,17 +638,28 @@ checkerror:
 	push acc
   push psw
   
-  mov x, second
-  Load_y(60)
-  lcall x_gteq_y
-  jnb mf, noerror; if mf = 0, then x<y, time<60secs, don't need to check time yet
+;  mov x, second
+;  Load_y(60)
+;  lcall x_gteq_y
+;  jnb mf, noerror; if mf = 0, then x<y, time<60secs, don't need to check time yet
   ;check temp because time>60sec
-  mov x, coldtemp
-  Load_y(50)
-  lcall x_gteq_y
-  jb mf, noerror  ;if mf = 1, then x>=y which is what we want, no error
-  ;there is error, so turn off oven
+  
+  clr c
+  mov a, #0x60
+  subb a, second
+  jnc noerror
+  
+  mov a, #50
+  subb a, coldtemp
+  jnc noerror
   lcall TurnOvenOff
+  
+  ;mov x, coldtemp
+  ;Load_y(50)
+  ;lcall x_gteq_y
+  ;jb mf, noerror  ;if mf = 1, then x>=y which is what we want, no error
+  ;there is error, so turn off oven
+  ;lcall TurnOvenOff
   
 noerror:
   pop psw
@@ -672,7 +689,7 @@ readingcoldjunction: ;read the cold junction from the adc
 	setb CE_ADC 
 	;wait for 1 second 
 	Wait_Milli_Seconds(#250)
-;	Wait_Milli_Seconds(#250)
+	Wait_Milli_Seconds(#250)
   
 	lcall Calculate_Temp_in_C 
     mov a, x
