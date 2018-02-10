@@ -320,10 +320,10 @@ MainProgram:
     lcall InitSerialPort
 		lcall INIT_SPI
 		lcall Timer0_Init
-   ; lcall Timer2_Init
-   lcall TurnOvenOff
-   
-    ljmp Menu_select1 ;; selecting and setting profiles
+    lcall Timer2_Init
+  ; lcall TurnOvenOff
+   lcall TurnOvenOn
+   ; ljmp Menu_select1 ;; selecting and setting profiles
     
 FOREVER: ;this will be how the oven is being controlled ; jump here once start button is pressed!!!
 ;------state 1 -------- ;	
@@ -547,10 +547,25 @@ reflownotdone:
 ; reading the thermocouple junction values 
 Readingtemperatures:
   lcall readingcoldjunction ;answer in x is saved in variable called 'coldtemp'
-
+  lcall readinghotjunction
+  
+  mov x, temperature
+  mov x+1, temperature+1
+  mov x+2, #0
+  mov x+3, #0 
+  mov y, hottemp
+  mov y+1, hottemp+1
+  mov y+2, #0
+  mov y+3, #0 
+  
+  lcall add32
+  
   mov a, x
-  mov coldtemp, a ;final temperature is in the temperature variable
-  ret
+  mov coldtemp, a
+ ret
+ ; mov a, x
+ ; mov coldtemp, a ;final temperature is in the temperature variable
+ ; ret
 
 ; checking if the temperture at the hot end is equal to soak temp yet
 
@@ -678,7 +693,7 @@ readingcoldjunction: ;read the cold junction from the adc
   
 	lcall Calculate_Temp_in_C 
     mov a, x
-    mov coldtemp, a
+    mov temperature, a
   
 	  pop psw
 	  pop acc
@@ -710,7 +725,68 @@ Calculate_Temp_in_C:
 ;	lcall Display_Temp_Putty
 	ret
 
+readinghotjunction: ;read the hot junction from the adc from oven and thermocouple wires
+;reading the adc
+	push acc
+  push psw
+  
+	clr CE_ADC 
+	mov R0, #00000001B ; Start bit:1 
+	lcall DO_SPI_G
+	mov R0, #10010000B ; Single ended, read channel 1 
+	lcall DO_SPI_G 
+	mov a, R1          ; R1 contains bits 8 and 9 
+	anl a, #00000011B  ; We need only the two least significant bits 
+	mov Result+1, a    ; Save result high.
+	mov R0, #55H ; It doesn't matter what we transmit... 
+	lcall DO_SPI_G 
+	mov Result, R1     ; R1 contains bits 0 to 7.  Save result low. 
+	setb CE_ADC 
+	;wait for 1 second 
+	Wait_Milli_Seconds(#250)
+	Wait_Milli_Seconds(#250)
+	
+	Load_X(0)
 
+	mov a,Result
+	mov x,a
+	mov a,Result+1
+	mov x+1,a
+	
+	lcall hex2bcd
+			
+ 	Set_Cursor(2, 5)
+	Display_BCD(bcd)
+  
+	lcall Calculate_hot 
+    mov a, x
+    mov hottemp, a
+  
+	  pop psw
+	  pop acc
+	  ret   
+
+Calculate_hot:
+push acc
+	push psw
+	; Vout calculations
+	mov x, Result
+	mov x+1, Result+1
+	mov x+2, #0
+	mov x+3, #0
+	
+	Load_y(29)
+	lcall mul32
+	;Load_y(2150)
+	;lcall add32
+	load_y(100)
+	lcall div32
+    
+	lcall hex2bcd
+	mov a, x
+		pop psw 
+	pop acc
+	ret
 	  	
 ; Display Temperature in Putty!
 Display_Temp_Putty:
