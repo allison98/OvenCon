@@ -88,8 +88,11 @@ LCD_D5 equ P3.3
 LCD_D6 equ P3.4
 LCD_D7 equ P3.5
 
+StartButton equ P0.4 
+BUTTON_1 equ P0.3
+BUTTON_2 equ P0.2
+BUTTON_3 equ P0.7
 OvenButton equ P3.7
-STARTBUTTON equ P0.5
 
 
 $NOLIST
@@ -115,6 +118,7 @@ ReflowStateMess: db 'Reflow State', 0
 SoakState: db 'Soak State', 0
 TemperatureRise: db 'Temp. Increase',0
 CoolingTemp: db 'Oven is cooling.',0
+Blank: db '                ',0
 
 
 ;---------------------------------;
@@ -298,9 +302,9 @@ MainProgram:
     mov P0M1, #0
     setb EA 
     lcall LCD_4BIT
-    mov soaktemp, #50
+    mov soaktemp, #0
     mov soaktime, #0x30
-    mov reflowtemp, #70
+    mov reflowtemp, #0x70
     mov reflowtime, #0x30
     mov second, #0
    ; mov countererror, #0	; to check if the thermocouple is in the oven
@@ -315,8 +319,9 @@ MainProgram:
     lcall InitSerialPort
 		lcall INIT_SPI
 		lcall Timer0_Init
-    lcall Timer2_Init
-   ; ljmp Menu_select1 ;; selecting and setting profiles
+  ;  lcall Timer2_Init
+  lcall TurnOvenOff
+    ljmp Menu_select1 ;; selecting and setting profiles
     
 FOREVER: ;this will be how the oven is being controlled ; jump here once start button is pressed!!!
 ;------state 1 -------- ;	
@@ -401,7 +406,7 @@ increasereflowtemp:
  lcall waitforcooling
 ; lcall Open_oven_toaster_BEEPER
  
- ljmp $
+ ljmp Menu_select1
   
 ;---------------------------------;
 ; functions						 				    ;
@@ -678,6 +683,8 @@ readingcoldjunction: ;read the cold junction from the adc
 	  ret   
 	   
 
+
+
 ;Trying to transfer the binary value in ADC into BCD and then into 
 ;ASCII to show in putty
 Calculate_Temp_in_C: 	
@@ -723,3 +730,339 @@ Display_Temp_LCD:
 	Set_Cursor(1, 9);  
 	ret
 
+
+;--------------------------------------;
+; Menu - Set soak parameters           ;
+;--------------------------------------;
+Menu_select1:  
+  WriteCommand(#0x01)
+  Wait_Milli_Seconds(#50)
+Menu_select2:
+Set_Cursor(1, 1)
+  Send_Constant_String(#MenuMessage1)
+  Set_Cursor(2, 1)
+  Send_Constant_String(#MenuMessage2)
+  
+  Wait_Milli_Seconds(#50) ;go to set Soak Temperature
+  jb BUTTON_1, Menu_select2_2
+  jnb BUTTON_1, $
+  ljmp Jump_to_Set_SoakTemp1
+  
+Menu_select2_2:
+  Wait_Milli_Seconds(#50) ;go to set Soak Time
+  jb BUTTON_2, Menu_select2_3
+  jnb BUTTON_2, $
+  ljmp Jump_to_Set_SoakTime1
+  
+Menu_select2_3:
+  Wait_Milli_Seconds(#50) ;go to second set of menus
+  jb BUTTON_3, Menu_select2_4
+  jnb BUTTON_3, $
+  ljmp Jump_to_Menu_select3
+  
+Menu_select2_4:
+  Wait_Milli_Seconds(#50)   ; start the reflow process
+  jb StartButton, Jump_to_Menu_select2_1
+  jnb StartButton, $
+  ljmp Jump_To_FOREVER1
+  
+
+
+Jump_to_Set_SoakTemp1:
+	ljmp Set_SoakTemp1
+  
+Jump_to_Set_SoakTime1:
+	ljmp Set_SoakTime1
+	
+Jump_to_Menu_select2_1:
+	ljmp Menu_select2
+  
+Jump_to_Menu_select3:
+	ljmp Menu_select3
+	
+Jump_To_FOREVER1: ;before going to reflow process
+	Set_cursor(1,1)
+	Send_Constant_String(#Blank)
+	Set_cursor(2,1)
+	Send_Constant_String(#Blank)
+	
+	;multiply everything by 100
+;	mov x, reflowtemp
+;	mov x+1, #0
+;	mov x+2, #0
+;	mov x+3, #0
+;	
+;	load_y(100)
+;	lcall mul32
+;	
+;	mov reflowtemp, x
+;	mov reflowtemp+1, x+1
+;	
+;	mov x, soaktemp
+;	mov x+1, #0
+;	mov x+2, #0
+;	mov x+3, #0
+;	
+;;	load_y(100)
+;	lcall mul32
+;	
+;	mov soaktemp, x
+;	mov soaktemp+1, x+1
+	mov second, #0
+	lcall Timer2_init
+	lcall TurnOvenOn
+;	 
+	ljmp FOREVER
+
+; Settings - Soak Temperature
+Set_SoakTemp1:
+  WriteCommand(#0x01)          ;clear display
+  Wait_Milli_Seconds(#50)
+  Set_Cursor(1, 1)
+  Send_Constant_String(#MenuSoakTemp)
+  Set_Cursor(2, 3)
+	Display_BCD(soaktemp)
+;	Set_Cursor(2, 1)
+;	Display_BCD(soaktemp+1)
+	
+Set_SoakTemp2:
+  jb BUTTON_1, Set_SoakTemp2_2
+  Wait_Milli_Seconds(#50)
+  jb BUTTON_1, Set_SoakTemp2_2
+  ljmp SoakTemp_inc
+Set_SoakTemp2_2:
+  jb BUTTON_2, Set_SoakTemp2_3
+  Wait_Milli_Seconds(#50)
+  jb BUTTON_2, Set_SoakTemp2_3
+  ljmp SoakTemp_dec
+Set_SoakTemp2_3:
+	jb BUTTON_3, Set_SoakTemp2_4
+  Wait_Milli_Seconds(#50)
+  jb BUTTON_3, Set_SoakTemp2_4
+  ljmp Menu_select1
+Set_SoakTemp2_4:
+  ljmp Set_SoakTemp2
+  
+SoakTemp_inc:
+  mov a, soaktemp
+  add a, #0x01
+  da a
+  mov soaktemp, a
+  Set_Cursor(2, 3)
+  Display_BCD(soaktemp)
+;    Set_Cursor(2, 1)
+ ; Display_BCD(soaktemp+1)
+  ljmp Set_SoakTemp2
+  
+SoakTemp_dec:
+  mov a, soaktemp
+	add a, #0x99
+	da a
+	mov soaktemp, a
+	Set_Cursor(2, 3)
+	Display_BCD(soaktemp)
+;	Set_Cursor(2, 1)
+;	Display_BCD(soaktemp+1)
+	ljmp Set_SoakTemp2
+
+; Settings - Soak Time
+Set_SoakTime1:
+  WriteCommand(#0x01)          ;clear display
+  Wait_Milli_Seconds(#50)
+  Set_Cursor(1, 1)
+  Send_Constant_String(#MenuSoakTime)
+  Set_Cursor(2, 3)
+	Display_BCD(soaktime)
+;	 Set_Cursor(2, 1)
+;	Display_BCD(soaktime+1)
+Set_SoakTime2:
+  jb BUTTON_1, Set_SoakTime2_2
+  Wait_Milli_Seconds(#50)
+  jb BUTTON_1, Set_SoakTime2_2
+  ljmp SoakTime_inc
+Set_SoakTime2_2:
+  jb BUTTON_2, Set_SoakTime2_3
+  Wait_Milli_Seconds(#50)
+  jb BUTTON_2, Set_SoakTime2_3
+  ljmp SoakTime_dec
+Set_SoakTime2_3:
+	jb BUTTON_3, Set_SoakTime2_4
+  Wait_Milli_Seconds(#50)
+  jb BUTTON_3, Set_SoakTime2_4
+  ljmp Menu_select1
+Set_SoakTime2_4:
+  ljmp Set_SoakTime2
+
+SoakTime_inc:
+	mov a, soaktime
+  add a, #0x01
+  da a
+  mov soaktime, a
+  Set_Cursor(2, 3)
+  Display_BCD(soaktime)
+ ;  Set_Cursor(2, 1)
+ ; Display_BCD(soaktime+1)
+  ljmp Set_SoakTime2
+  
+SoakTime_dec:
+  mov a, soaktime
+	add a, #0x99
+	da a
+	mov soaktime, a
+	Set_Cursor(2, 3)
+	Display_BCD(soaktime)
+;	 Set_Cursor(2, 1)
+ ; Display_BCD(soaktime+1)
+	ljmp Set_SoakTime2
+
+; Second set of Menu - Set reflow parameters
+Menu_select3:
+  WriteCommand(#0x01)
+  Wait_Milli_Seconds(#50)
+Menu_select4:
+	Set_Cursor(1, 1)
+  Send_Constant_String(#MenuMessage3)
+	Set_Cursor(2, 1)
+  Send_Constant_String(#MenuMessage4)
+  
+   Wait_Milli_Seconds(#50) ;go to set Reflow Temperature
+  jb BUTTON_1, Menu_select4_2
+  jnb BUTTON_1, $
+  ljmp Jump_to_Set_ReflowTemp1
+  
+Menu_select4_2:
+  Wait_Milli_Seconds(#50) ;go to set Reflow Time
+  jb BUTTON_2, Menu_select4_3
+  jnb BUTTON_2, $
+  ljmp Jump_to_Set_ReflowTime1
+  
+Menu_select4_3:
+  Wait_Milli_Seconds(#50) ;go to first set of menus
+  jb BUTTON_3, Menu_select4_4
+  jnb BUTTON_3, $
+  ljmp Jump_to_Menu_select2
+
+Menu_select4_4:
+  Wait_Milli_Seconds(#50)   ; start the reflow process
+  jb StartButton, Jump_to_Menu_select3_1
+  jnb StartButton, $
+  ljmp Jump_To_FOREVER1
+
+Jump_To_FOREVER2:
+	ljmp FOREVER
+  
+
+Jump_to_Set_ReflowTemp1:
+	ljmp Set_ReflowTemp1
+  
+Jump_to_Set_ReflowTime1:
+	ljmp Set_ReflowTime1
+	
+Jump_to_Menu_select3_1:
+	ljmp Menu_select4
+  
+Jump_to_Menu_select2:
+	ljmp Menu_select1
+  
+; Settings - Reflow Temperature
+Set_ReflowTemp1:
+  WriteCommand(#0x01)          ;clear display
+  Wait_Milli_Seconds(#50)
+  Set_Cursor(1, 1)
+  Send_Constant_String(#MenuReflowTemp)
+  Set_Cursor(2, 3)
+	Display_BCD(reflowtemp)
+;	 Set_Cursor(2, 1)
+;  Display_BCD(reflowtime+1)
+Set_ReflowTemp2:
+  jb BUTTON_1, Set_ReflowTemp2_2
+  Wait_Milli_Seconds(#50)
+  jb BUTTON_1, Set_ReflowTemp2_2
+  ljmp ReflowTemp_inc
+Set_ReflowTemp2_2:
+  jb BUTTON_2, Set_ReflowTemp2_3
+  Wait_Milli_Seconds(#50)
+  jb BUTTON_2, Set_ReflowTemp2_3
+  ljmp ReflowTemp_dec
+Set_ReflowTemp2_3:
+	jb BUTTON_3, Set_ReflowTemp2_4
+  Wait_Milli_Seconds(#50)
+  jb BUTTON_3, Set_ReflowTemp2_4
+  ljmp Menu_select3
+Set_ReflowTemp2_4:
+  ljmp Set_ReflowTemp2
+
+ReflowTemp_inc:
+	mov a, reflowtemp
+  add a, #0x01
+  da a
+  mov reflowtemp, a
+  Set_Cursor(2, 3)
+  Display_BCD(reflowtemp)
+ ; Set_Cursor(2, 1)
+ ; Display_BCD(reflowtemp+1)
+  ljmp Set_ReflowTemp2
+  
+ReflowTemp_dec:
+  mov a, reflowtemp
+	add a, #0x99
+	da a
+	mov reflowtemp, a
+;	Set_Cursor(2, 1)
+;	Display_BCD(reflowtemp+1)
+		Set_Cursor(2, 3)
+	Display_BCD(reflowtemp)
+	ljmp Set_ReflowTemp2
+
+
+; Settings - Reflow Time
+Set_ReflowTime1:
+  WriteCommand(#0x01)          ;clear display
+  Wait_Milli_Seconds(#50)
+  Set_Cursor(1, 1)
+  Send_Constant_String(#MenuReflowTime)
+ ; Set_Cursor(2, 1)
+;	Display_BCD(reflowtime+1)
+	 Set_Cursor(2, 3)
+	Display_BCD(reflowtime)
+Set_ReflowTime2:
+  jb BUTTON_1, Set_ReflowTime2_2
+  Wait_Milli_Seconds(#50)
+  jb BUTTON_1, Set_ReflowTime2_2
+  ljmp ReflowTime_inc
+Set_ReflowTime2_2:
+  jb BUTTON_2, Set_ReflowTime2_3
+  Wait_Milli_Seconds(#50)
+  jb BUTTON_2, Set_ReflowTime2_3
+  ljmp ReflowTime_dec
+Set_ReflowTime2_3:
+	jb BUTTON_3, Set_ReflowTime2_4
+  Wait_Milli_Seconds(#50)
+  jb BUTTON_3, Set_ReflowTime2_4
+  ljmp Menu_select3
+Set_ReflowTime2_4:
+  ljmp Set_ReflowTime2
+
+ReflowTime_inc:
+	mov a, reflowtime
+  add a, #0x01
+  da a
+  mov reflowtime, a
+ ; Set_Cursor(2, 1)
+ ; Display_BCD(reflowtime+1)
+  Set_Cursor(2, 3)
+  Display_BCD(reflowtime)
+  ljmp Set_ReflowTime2
+  
+ReflowTime_dec:
+  mov a, reflowtime
+	add a, #0x99
+	da a
+	mov reflowtime, a
+;	Set_Cursor(2, 1)
+;	Display_BCD(reflowtime+1)
+		Set_Cursor(2, 3)
+	Display_BCD(reflowtime)
+	ljmp Set_ReflowTime2
+
+END
