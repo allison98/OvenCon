@@ -1498,7 +1498,7 @@
 0AFB D002       946            pop AR2   ; start the reflow process
 0AFD 20840F     947     jb StartButton, Jump_to_Menu_select3_1
 0B00 3084FD     948     jnb StartButton, $
-0B03 020B06     949     ljmp Jump_To_FOREVER2
+0B03 020880     949     ljmp Jump_To_FOREVER1
 0B06            950   
 0B06            951   Jump_To_FOREVER2:
 0B06 020534     952            ljmp FOREVER

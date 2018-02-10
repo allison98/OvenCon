@@ -946,7 +946,7 @@ Menu_select4_4:
   Wait_Milli_Seconds(#50)   ; start the reflow process
   jb StartButton, Jump_to_Menu_select3_1
   jnb StartButton, $
-  ljmp Jump_To_FOREVER2
+  ljmp Jump_To_FOREVER1
 
 Jump_To_FOREVER2:
 	ljmp FOREVER
