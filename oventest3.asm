@@ -91,7 +91,7 @@ StartButton equ P0.4
 BUTTON_1 equ P0.3
 BUTTON_2 equ P0.2
 BUTTON_3 equ P0.7
-OvenButton equ P2.5
+OvenButton equ P0.1
 
 
 $NOLIST
@@ -301,7 +301,7 @@ MainProgram:
     mov P0M1, #0
     setb EA 
     lcall LCD_4BIT
-    mov soaktemp, #0x00
+    mov soaktemp, #120
     mov soaktemp+1, #0x00
     mov soaktime, #0x00
     mov soaktime+1, #0x00
@@ -322,28 +322,29 @@ MainProgram:
     lcall InitSerialPort
 		lcall INIT_SPI
 		lcall Timer0_Init
-    lcall Timer2_Init
-  ; lcall TurnOvenOff
-   lcall TurnOvenOn
-   ; ljmp Menu_select1 ;; selecting and setting profiles
+  ;  lcall Timer2_Init
+   lcall TurnOvenOff
+  ; lcall TurnOvenOn
+   ljmp Menu_select1 ;; selecting and setting profiles
     
 FOREVER: ;this will be how the oven is being controlled ; jump here once start button is pressed!!!
 ;------state 1 -------- ;	
    Set_Cursor(1,1)
    Send_Constant_String(#TemperatureRise)
- ;  lcall checkstop       ;checks if stop button is pressed. If so, turns off oven and goes back to menu
-   ;lcall checkerror      ;if error, terminate program and return
+  lcall checkstop       ;checks if stop button is pressed. If so, turns off oven and goes back to menu
+   lcall checkerror      ;if error, terminate program and return
    lcall Readingtemperatures  ;calculates temperature of oven using thermocouple junctions
    lcall DisplayingLCD
 
-   ;lcall cst ; checking if we have reached Soak Temp yet
-  ; lcall State_change_BEEPER ; temp = soak temp, so going to soak time state 
+   
+   lcall State_change_BEEPER ; temp = soak temp, so going to soak time state 
   
-  mov a, coldtemp
-  mov b, soaktemp
-  div AB
-  mov a,b 
-  cjne a, #0, FOREVER
+ 
+  clr c
+  mov a, soaktemp
+  subb a, coldtemp
+  jnc FOREVER
+   
   lcall TurnOvenOff
   
    clr tr2   			; restarting timer 2 to keep track of the time lasped since we reached soaktemp
@@ -358,7 +359,7 @@ FOREVER: ;this will be how the oven is being controlled ; jump here once start b
 soaktempchecked:
 	Set_Cursor(1,1)
    Send_Constant_String(#SoakState)  
-;	lcall checkstop	
+	lcall checkstop	
    lcall Readingtemperatures
    lcall DisplayingLCD
   lcall keepingsoaktempsame ; boundary temp
@@ -383,7 +384,7 @@ increasereflowtemp:
   lcall TurnOvenOff  
    
  ; lcall checkingreflowtemp
- ; lcall State_change_BEEPER
+  lcall State_change_BEEPER
   clr tr2
   mov a, #0
   mov second, a
@@ -391,7 +392,7 @@ increasereflowtemp:
 
   ;----state 4 ---;
  reflowstate:
-  ;lcall checkstop
+  lcall checkstop
   lcall Readingtemperatures
    lcall DisplayingLCD
    	Set_Cursor(1,1)
@@ -548,20 +549,10 @@ reflownotdone:
 
 ; reading the thermocouple junction values 
 Readingtemperatures:
-  lcall readingcoldjunction ;answer in x is saved in variable called 'coldtemp'
+ ; lcall readingcoldjunction ;answer in x is saved in variable called 'coldtemp'
   lcall readinghotjunction
   
-  mov x, temperature
-  mov x+1, temperature+1
-  mov x+2, #0
-  mov x+3, #0 
-  mov y, hottemp
-  mov y+1, hottemp+1
-  mov y+2, #0
-  mov y+3, #0 
-  
-  lcall add32
-  
+
   mov a, x
   mov coldtemp, a
  ret
@@ -594,7 +585,7 @@ return:
   ret
 stop:
 	lcall TurnOvenOff
-    ljmp $
+    ljmp menu_select1
 
   
 ;---------------------------------- ;
@@ -616,14 +607,25 @@ TurnOvenOn:
   ret
 
 DisplayingLCD:
+	mov bcd, second
 	Set_Cursor(2,1)
-	Display_BCD(second)
+	Display_BCD(bcd+1)
+	Set_Cursor(2,3)
+	Display_BCD(bcd)
 	
 	Set_Cursor(2, 12)
 	mov x, coldtemp
-	lcall hex2bcd
+
 	
+	lcall hex2bcd	
 	Display_BCD(bcd)
+
+Set_Cursor(2, 10)
+Display_BCD(bcd+1)	
+	;Set_Cursor(2, 10)
+	;Display_BCD(bcd+1)
+
+		
 	Set_Cursor(2,15)
     WriteData(#0xDF)
     Set_Cursor(2,16)
@@ -640,29 +642,22 @@ checkerror:
 	push acc
   push psw
   
-;  mov x, second
-;  Load_y(60)
-;  lcall x_gteq_y
-;  jnb mf, noerror; if mf = 0, then x<y, time<60secs, don't need to check time yet
-  ;check temp because time>60sec
   
   clr c
   mov a, #0x60
   subb a, second
   jnc noerror
+
   
-  mov a, #50
+  mov a, #0x50
   subb a, coldtemp
-  jnc noerror
+  jnc error
+  sjmp noerror
+  error:
   lcall TurnOvenOff
+  ljmp Menu_Select1
   
-  ;mov x, coldtemp
-  ;Load_y(50)
-  ;lcall x_gteq_y
-  ;jb mf, noerror  ;if mf = 1, then x>=y which is what we want, no error
-  ;there is error, so turn off oven
-  ;lcall TurnOvenOff
-  
+
 noerror:
   pop psw
   pop acc 
@@ -797,7 +792,36 @@ Display_Temp_Putty:
 	mov a, #'\n'
 	lcall putchar
 	ret	
-
+;beeper function to indicate reflow process has started
+Reflow_start_BEEPER:
+ setb BEEPER
+ cpl BEEPER
+ Wait_Milli_Seconds(#250)
+ Wait_Milli_Seconds(#250)
+ clr BEEPER
+ ret
+ 
+State_change_BEEPER:
+ setb BEEPER
+ cpl BEEPER
+ Wait_Milli_Seconds(#250)
+ Wait_Milli_Seconds(#250)
+ clr BEEPER
+ ret
+ 
+Open_toaster_oven_BEEPER:
+ clr a ; c=0
+loop6times: 
+ cjne a, #6, beep
+ ret
+ beep: 
+ setb BEEPER
+ cpl BEEPER
+ Wait_Milli_Seconds(#100)
+ clr BEEPER
+ inc a 
+ sjmp loop6times
+ ret
 ; Display Temperature in LCD
 Display_Temp_LCD:
 ; show temp in Celcius 
@@ -844,6 +868,7 @@ Menu_select2_4:
 Jump_To_FOREVER1:
   WriteCommand(#0x01)
   Wait_Milli_Seconds(#50)
+  lcall TurnOvenOn
   lcall Timer2_init
 	
 	mov second, #0
@@ -913,10 +938,13 @@ SoakTemp_inc3:    ;99->100, 199->200, etc
   mov soaktemp+0, a
   sjmp SoakTemp_inc4
 SoakTemp_inc4:  ;display
+  mov x, soaktemp
+  lcall hex2bcd
+  
   Set_Cursor(2, 1)
-  Display_BCD(soaktemp+1)
+  Display_BCD(bcd+1)
   Set_Cursor(2, 3)
-  Display_BCD(soaktemp+0)
+  Display_BCD(bcd+0)
   ljmp Set_SoakTemp2
   
 SoakTemp_dec:
@@ -961,7 +989,7 @@ Set_SoakTime2:
   jb BUTTON_1, Set_SoakTime2_2
   Wait_Milli_Seconds(#50)
   jb BUTTON_1, Set_SoakTime2_2
-  ljmp SoakTime_inc
+  ljmp SoakTime_inc1
 Set_SoakTime2_2:
   jb BUTTON_2, Set_SoakTime2_3
   Wait_Milli_Seconds(#50)
@@ -975,6 +1003,18 @@ Set_SoakTime2_3:
 Set_SoakTime2_4:
   ljmp Set_SoakTime2
 
+soaktime_inc1:
+ mov x, soaktime
+ load_y(1)
+ lcall add32
+ mov soaktime, x
+ lcall hex2bcd
+ Set_Cursor(2, 1)
+  Display_BCD(bcd+1)
+  Set_Cursor(2, 3)
+  Display_BCD(bcd+0)
+  ljmp Set_SoakTime2
+
 SoakTime_inc:
   mov a, soaktime+0
   cjne a, #0x99, SoakTime_inc2
@@ -984,6 +1024,8 @@ SoakTime_inc:
   mov soaktime+1, a
   mov soaktime+0, a
   sjmp SoakTime_inc4
+  
+  
 SoakTime_inc2:   ;regular increment
   add a, #0x01
   da a
