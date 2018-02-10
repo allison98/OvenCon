@@ -1,4 +1,3 @@
-
 $MODLP51
 org 0000H
    ljmp MainProgram
@@ -88,11 +87,8 @@ LCD_D5 equ P3.3
 LCD_D6 equ P3.4
 LCD_D7 equ P3.5
 
-StartButton equ P0.4 
-BUTTON_1 equ P0.3
-BUTTON_2 equ P0.2
-BUTTON_3 equ P0.7
 OvenButton equ P3.7
+STARTBUTTON equ P0.5
 
 
 $NOLIST
@@ -118,7 +114,6 @@ ReflowStateMess: db 'Reflow State', 0
 SoakState: db 'Soak State', 0
 TemperatureRise: db 'Temp. Increase',0
 CoolingTemp: db 'Oven is cooling.',0
-Blank: db '                ',0
 
 
 ;---------------------------------;
@@ -302,9 +297,9 @@ MainProgram:
     mov P0M1, #0
     setb EA 
     lcall LCD_4BIT
-    mov soaktemp, #0
+    mov soaktemp, #50
     mov soaktime, #0x30
-    mov reflowtemp, #0x70
+    mov reflowtemp, #70
     mov reflowtime, #0x30
     mov second, #0
    ; mov countererror, #0	; to check if the thermocouple is in the oven
@@ -319,8 +314,9 @@ MainProgram:
     lcall InitSerialPort
 		lcall INIT_SPI
 		lcall Timer0_Init
-  ;  lcall Timer2_Init
-  lcall TurnOvenOff
+   ; lcall Timer2_Init
+   lcall TurnOvenOff
+   
     ljmp Menu_select1 ;; selecting and setting profiles
     
 FOREVER: ;this will be how the oven is being controlled ; jump here once start button is pressed!!!
@@ -406,7 +402,7 @@ increasereflowtemp:
  lcall waitforcooling
 ; lcall Open_oven_toaster_BEEPER
  
- ljmp Menu_select1
+ ljmp $
   
 ;---------------------------------;
 ; functions						 				    ;
@@ -683,8 +679,6 @@ readingcoldjunction: ;read the cold junction from the adc
 	  ret   
 	   
 
-
-
 ;Trying to transfer the binary value in ADC into BCD and then into 
 ;ASCII to show in putty
 Calculate_Temp_in_C: 	
@@ -729,11 +723,10 @@ Display_Temp_LCD:
 	Display_BCD(bcd+1)
 	Set_Cursor(1, 9);  
 	ret
-
-
-;--------------------------------------;
-; Menu - Set soak parameters           ;
-;--------------------------------------;
+	
+; MENU SELECT;	
+	
+	
 Menu_select1:  
   WriteCommand(#0x01)
   Wait_Milli_Seconds(#50)
@@ -764,9 +757,13 @@ Menu_select2_4:
   Wait_Milli_Seconds(#50)   ; start the reflow process
   jb StartButton, Jump_to_Menu_select2_1
   jnb StartButton, $
-  ljmp Jump_To_FOREVER1
+  ljmp Jump_To_FOREVER
   
-
+Jump_To_FOREVER:
+	clr tr2
+	mov seconds, #0
+	setb tr2
+	ljmp FOREVER
 
 Jump_to_Set_SoakTemp1:
 	ljmp Set_SoakTemp1
@@ -779,40 +776,6 @@ Jump_to_Menu_select2_1:
   
 Jump_to_Menu_select3:
 	ljmp Menu_select3
-	
-Jump_To_FOREVER1: ;before going to reflow process
-	Set_cursor(1,1)
-	Send_Constant_String(#Blank)
-	Set_cursor(2,1)
-	Send_Constant_String(#Blank)
-	
-	;multiply everything by 100
-;	mov x, reflowtemp
-;	mov x+1, #0
-;	mov x+2, #0
-;	mov x+3, #0
-;	
-;	load_y(100)
-;	lcall mul32
-;	
-;	mov reflowtemp, x
-;	mov reflowtemp+1, x+1
-;	
-;	mov x, soaktemp
-;	mov x+1, #0
-;	mov x+2, #0
-;	mov x+3, #0
-;	
-;;	load_y(100)
-;	lcall mul32
-;	
-;	mov soaktemp, x
-;	mov soaktemp+1, x+1
-	mov second, #0
-	lcall Timer2_init
-	lcall TurnOvenOn
-;	 
-	ljmp FOREVER
 
 ; Settings - Soak Temperature
 Set_SoakTemp1:
@@ -820,11 +783,8 @@ Set_SoakTemp1:
   Wait_Milli_Seconds(#50)
   Set_Cursor(1, 1)
   Send_Constant_String(#MenuSoakTemp)
-  Set_Cursor(2, 3)
+  Set_Cursor(2, 1)
 	Display_BCD(soaktemp)
-;	Set_Cursor(2, 1)
-;	Display_BCD(soaktemp+1)
-	
 Set_SoakTemp2:
   jb BUTTON_1, Set_SoakTemp2_2
   Wait_Milli_Seconds(#50)
@@ -848,10 +808,8 @@ SoakTemp_inc:
   add a, #0x01
   da a
   mov soaktemp, a
-  Set_Cursor(2, 3)
+  Set_Cursor(2, 1)
   Display_BCD(soaktemp)
-;    Set_Cursor(2, 1)
- ; Display_BCD(soaktemp+1)
   ljmp Set_SoakTemp2
   
 SoakTemp_dec:
@@ -859,10 +817,8 @@ SoakTemp_dec:
 	add a, #0x99
 	da a
 	mov soaktemp, a
-	Set_Cursor(2, 3)
+	Set_Cursor(2, 1)
 	Display_BCD(soaktemp)
-;	Set_Cursor(2, 1)
-;	Display_BCD(soaktemp+1)
 	ljmp Set_SoakTemp2
 
 ; Settings - Soak Time
@@ -871,10 +827,8 @@ Set_SoakTime1:
   Wait_Milli_Seconds(#50)
   Set_Cursor(1, 1)
   Send_Constant_String(#MenuSoakTime)
-  Set_Cursor(2, 3)
+  Set_Cursor(2, 1)
 	Display_BCD(soaktime)
-;	 Set_Cursor(2, 1)
-;	Display_BCD(soaktime+1)
 Set_SoakTime2:
   jb BUTTON_1, Set_SoakTime2_2
   Wait_Milli_Seconds(#50)
@@ -898,10 +852,8 @@ SoakTime_inc:
   add a, #0x01
   da a
   mov soaktime, a
-  Set_Cursor(2, 3)
+  Set_Cursor(2, 1)
   Display_BCD(soaktime)
- ;  Set_Cursor(2, 1)
- ; Display_BCD(soaktime+1)
   ljmp Set_SoakTime2
   
 SoakTime_dec:
@@ -909,10 +861,8 @@ SoakTime_dec:
 	add a, #0x99
 	da a
 	mov soaktime, a
-	Set_Cursor(2, 3)
+	Set_Cursor(2, 1)
 	Display_BCD(soaktime)
-;	 Set_Cursor(2, 1)
- ; Display_BCD(soaktime+1)
 	ljmp Set_SoakTime2
 
 ; Second set of Menu - Set reflow parameters
@@ -946,7 +896,7 @@ Menu_select4_4:
   Wait_Milli_Seconds(#50)   ; start the reflow process
   jb StartButton, Jump_to_Menu_select3_1
   jnb StartButton, $
-  ljmp Jump_To_FOREVER1
+  ljmp Jump_To_FOREVER2
 
 Jump_To_FOREVER2:
 	ljmp FOREVER
@@ -970,10 +920,8 @@ Set_ReflowTemp1:
   Wait_Milli_Seconds(#50)
   Set_Cursor(1, 1)
   Send_Constant_String(#MenuReflowTemp)
-  Set_Cursor(2, 3)
+  Set_Cursor(2, 1)
 	Display_BCD(reflowtemp)
-;	 Set_Cursor(2, 1)
-;  Display_BCD(reflowtime+1)
 Set_ReflowTemp2:
   jb BUTTON_1, Set_ReflowTemp2_2
   Wait_Milli_Seconds(#50)
@@ -997,10 +945,8 @@ ReflowTemp_inc:
   add a, #0x01
   da a
   mov reflowtemp, a
-  Set_Cursor(2, 3)
+  Set_Cursor(2, 1)
   Display_BCD(reflowtemp)
- ; Set_Cursor(2, 1)
- ; Display_BCD(reflowtemp+1)
   ljmp Set_ReflowTemp2
   
 ReflowTemp_dec:
@@ -1008,9 +954,7 @@ ReflowTemp_dec:
 	add a, #0x99
 	da a
 	mov reflowtemp, a
-;	Set_Cursor(2, 1)
-;	Display_BCD(reflowtemp+1)
-		Set_Cursor(2, 3)
+	Set_Cursor(2, 1)
 	Display_BCD(reflowtemp)
 	ljmp Set_ReflowTemp2
 
@@ -1021,9 +965,7 @@ Set_ReflowTime1:
   Wait_Milli_Seconds(#50)
   Set_Cursor(1, 1)
   Send_Constant_String(#MenuReflowTime)
- ; Set_Cursor(2, 1)
-;	Display_BCD(reflowtime+1)
-	 Set_Cursor(2, 3)
+  Set_Cursor(2, 1)
 	Display_BCD(reflowtime)
 Set_ReflowTime2:
   jb BUTTON_1, Set_ReflowTime2_2
@@ -1048,9 +990,7 @@ ReflowTime_inc:
   add a, #0x01
   da a
   mov reflowtime, a
- ; Set_Cursor(2, 1)
- ; Display_BCD(reflowtime+1)
-  Set_Cursor(2, 3)
+  Set_Cursor(2, 1)
   Display_BCD(reflowtime)
   ljmp Set_ReflowTime2
   
@@ -1059,10 +999,7 @@ ReflowTime_dec:
 	add a, #0x99
 	da a
 	mov reflowtime, a
-;	Set_Cursor(2, 1)
-;	Display_BCD(reflowtime+1)
-		Set_Cursor(2, 3)
+	Set_Cursor(2, 1)
 	Display_BCD(reflowtime)
-	ljmp Set_ReflowTime2
-
-END
+	ljmp Set_ReflowTime2	
+	END
