@@ -60,9 +60,9 @@ Result: ds 2
 coldtemp: ds 1
 hottemp:ds 4
 soaktemp: ds 2
-soaktime: ds 1
+soaktime: ds 2
 reflowtemp: ds 2
-reflowtime: ds 1
+reflowtime: ds 2
 countererror: ds 1
 temperature:ds 4
 Count1ms:     ds 2 ; Used to determine when half second has passed 
@@ -304,9 +304,11 @@ MainProgram:
     mov soaktemp, #0x00
     mov soaktemp+1, #0x00
     mov soaktime, #0x00
+    mov soaktime+1, #0x00
     mov reflowtemp, #0x00
     mov reflowtemp+1, #0x00
     mov reflowtime, #0x00
+    mov reflowtime+1, #0x00
     mov second, #0
    ; mov countererror, #0	; to check if the thermocouple is in the oven
 		
@@ -878,7 +880,9 @@ Set_SoakTime1:
   Set_Cursor(1, 1)
   Send_Constant_String(#MenuSoakTime)
   Set_Cursor(2, 1)
-	Display_BCD(soaktime)
+  Display_BCD(soaktime+1)
+  Set_Cursor(2, 3)
+  Display_BCD(soaktime+0)
 Set_SoakTime2:
   jb BUTTON_1, Set_SoakTime2_2
   Wait_Milli_Seconds(#50)
@@ -898,22 +902,61 @@ Set_SoakTime2_4:
   ljmp Set_SoakTime2
 
 SoakTime_inc:
-	mov a, soaktime
+  mov a, soaktime+0
+  cjne a, #0x99, SoakTime_inc2
+  mov a, soaktime+1
+  cjne a, #0x02, SoakTime_inc3
+  clr a                      ;299->0
+  mov soaktime+1, a
+  mov soaktime+0, a
+  sjmp SoakTime_inc4
+SoakTime_inc2:   ;regular increment
   add a, #0x01
   da a
-  mov soaktime, a
+  mov soaktime+0, a
+  sjmp SoakTime_inc4
+SoakTime_inc3:    ;99->100, 199->200, etc
+  mov a, soaktime+1 
+  add a, #0x01
+  da a
+  mov soaktime+1, a
+  clr a
+  mov soaktime+0, a
+  sjmp SoakTime_inc4
+SoakTime_inc4:  ;display
   Set_Cursor(2, 1)
-  Display_BCD(soaktime)
+  Display_BCD(soaktime+1)
+  Set_Cursor(2, 3)
+  Display_BCD(soaktime+0)
   ljmp Set_SoakTime2
   
 SoakTime_dec:
-  mov a, soaktime
-	add a, #0x99
-	da a
-	mov soaktime, a
-	Set_Cursor(2, 1)
-	Display_BCD(soaktime)
-	ljmp Set_SoakTime2
+  mov a, soaktime+0
+  cjne a, #0x00, SoakTime_dec2
+  mov a, soaktime+1
+  cjne a, #0x00, SoakTime_dec3
+  mov soaktime+1, #0x02                 ;0->299
+  mov soaktime+0, #0x99
+  sjmp SoakTime_dec4
+SoakTime_dec2:   ;regular decrement
+  add a, #0x99
+  da a
+  mov soaktime+0, a
+  sjmp SoakTime_dec4
+SoakTime_dec3:   ;100->99, 200-> 199
+  mov a, soaktime+1 
+  add a, #0x99
+  da a
+  mov soaktime+1, a
+  mov a, #0x99
+  mov soaktime+0, a
+  sjmp SoakTime_dec4
+SoakTime_dec4:    ;display
+  Set_Cursor(2, 1)
+  Display_BCD(soaktime+1)
+  Set_Cursor(2, 3)
+  Display_BCD(soaktime+0)
+  ljmp Set_SoakTime2
 
 ; Second set of Menu - Set reflow parameters
 Menu_select3:
@@ -1057,7 +1100,9 @@ Set_ReflowTime1:
   Set_Cursor(1, 1)
   Send_Constant_String(#MenuReflowTime)
   Set_Cursor(2, 1)
-	Display_BCD(reflowtime)
+  Display_BCD(reflowtime+1)
+  Set_Cursor(2, 3)
+  Display_BCD(reflowtime+0)
 Set_ReflowTime2:
   jb BUTTON_1, Set_ReflowTime2_2
   Wait_Milli_Seconds(#50)
@@ -1077,22 +1122,61 @@ Set_ReflowTime2_4:
   ljmp Set_ReflowTime2
 
 ReflowTime_inc:
-	mov a, reflowtime
+  mov a, reflowtime+0
+  cjne a, #0x99, ReflowTime_inc2
+  mov a, reflowtime+1
+  cjne a, #0x02, ReflowTime_inc3
+  clr a                      ;299->0
+  mov reflowtime+1, a
+  mov reflowtime+0, a
+  sjmp ReflowTime_inc4
+ReflowTime_inc2:   ;regular increment
   add a, #0x01
   da a
-  mov reflowtime, a
+  mov reflowtime+0, a
+  sjmp ReflowTime_inc4
+ReflowTime_inc3:    ;99->100, 199->200, etc
+  mov a, reflowtime+1 
+  add a, #0x01
+  da a
+  mov reflowtime+1, a
+  clr a
+  mov reflowtime+0, a
+  sjmp ReflowTime_inc4
+ReflowTime_inc4:  ;display
   Set_Cursor(2, 1)
-  Display_BCD(reflowtime)
+  Display_BCD(reflowtime+1)
+  Set_Cursor(2, 3)
+  Display_BCD(reflowtime+0)
   ljmp Set_ReflowTime2
   
 ReflowTime_dec:
-  mov a, reflowtime
-	add a, #0x99
-	da a
-	mov reflowtime, a
-	Set_Cursor(2, 1)
-	Display_BCD(reflowtime)
-	ljmp Set_ReflowTime2
+  mov a, reflowtime+0
+  cjne a, #0x00, ReflowTime_dec2
+  mov a, reflowtime+1
+  cjne a, #0x00, ReflowTime_dec3
+  mov reflowtime+1, #0x02                 ;0->299
+  mov reflowtime+0, #0x99
+  sjmp ReflowTime_dec4
+ReflowTime_dec2:   ;regular decrement
+  add a, #0x99
+  da a
+  mov reflowtime+0, a
+  sjmp ReflowTime_dec4
+ReflowTime_dec3:   ;100->99, 200-> 199
+  mov a, reflowtime+1 
+  add a, #0x99
+  da a
+  mov reflowtime+1, a
+  mov a, #0x99
+  mov reflowtime+0, a
+  sjmp ReflowTime_dec4
+ReflowTime_dec4:    ;display
+  Set_Cursor(2, 1)
+  Display_BCD(reflowtime+1)
+  Set_Cursor(2, 3)
+  Display_BCD(reflowtime+0)
+  ljmp Set_ReflowTime2
 	
 	
 END
