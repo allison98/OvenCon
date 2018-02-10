@@ -1,0 +1,1761 @@
+                 -1   $MODLP51
+0000              1   ;--------------------------------------------------------
+0000              2   ; Special Function Registers
+0000              3   ;--------------------------------------------------------
+0000              4   ACC            DATA 0xe0
+0000              5   B              DATA 0xf0
+0000              6   PSW            DATA 0xd0
+0000              7   SP             DATA 0x81
+0000              8   SPX            DATA 0xef
+0000              9   DPL            DATA 0x82
+0000             10   DPH            DATA 0x83
+0000             11   DPLB           DATA 0xd4
+0000             12   DPHB           DATA 0xd5
+0000             13   PAGE           DATA 0xf6
+0000             14   AX             DATA 0xe1
+0000             15   BX             DATA 0xf7
+0000             16   DSPR           DATA 0xe2
+0000             17   FIRD           DATA 0xe3
+0000             18   MACL           DATA 0xe4
+0000             19   MACH           DATA 0xe5
+0000             20   PCON           DATA 0x87
+0000             21   AUXR           DATA 0x8e
+0000             22   AUXR1          DATA 0xa2
+0000             23   DPCF           DATA 0xa1
+0000             24   CKRL           DATA 0x97
+0000             25   CKCKON0        DATA 0x8f
+0000             26   CKCKON1        DATA 0xaf
+0000             27   CKSEL          DATA 0x85
+0000             28   CLKREG         DATA 0xae
+0000             29   OSCCON         DATA 0x85
+0000             30   IE             DATA 0xa8
+0000             31   IEN0           DATA 0xa8
+0000             32   IEN1           DATA 0xb1
+0000             33   IPH0           DATA 0xb7
+0000             34   IP             DATA 0xb8
+0000             35   IPL0           DATA 0xb8
+0000             36   IPH1           DATA 0xb3
+0000             37   IPL1           DATA 0xb2
+0000             38   P0             DATA 0x80
+0000             39   P1             DATA 0x90
+0000             40   P2             DATA 0xa0
+0000             41   P3             DATA 0xb0
+0000             42   P4             DATA 0xc0
+0000             43   P0M0           DATA 0xe6
+0000             44   P0M1           DATA 0xe7
+0000             45   P1M0           DATA 0xd6
+0000             46   P1M1           DATA 0xd7
+0000             47   P2M0           DATA 0xce
+0000             48   P2M1           DATA 0xcf
+0000             49   P3M0           DATA 0xc6
+0000             50   P3M1           DATA 0xc7
+0000             51   P4M0           DATA 0xbe
+0000             52   P4M1           DATA 0xbf
+0000             53   SCON           DATA 0x98
+0000             54   SBUF           DATA 0x99
+0000             55   SADEN          DATA 0xb9
+0000             56   SADDR          DATA 0xa9
+0000             57   BDRCON         DATA 0x9b
+0000             58   BRL            DATA 0x9a
+0000             59   TCON           DATA 0x88
+0000             60   TMOD           DATA 0x89
+0000             61   TCONB          DATA 0x91
+0000             62   TL0            DATA 0x8a
+0000             63   TH0            DATA 0x8c
+0000             64   TL1            DATA 0x8b
+0000             65   TH1            DATA 0x8d
+0000             66   RL0            DATA 0xf2
+0000             67   RH0            DATA 0xf3
+0000             68   RTL1           DATA 0xf4
+0000             69   RH1            DATA 0xf5
+0000             70   WDTRST         DATA 0xa6
+0000             71   WDTPRG         DATA 0xa7
+0000             72   T2CON          DATA 0xc8
+0000             73   T2MOD          DATA 0xc9
+0000             74   RCAP2H         DATA 0xcb
+0000             75   RCAP2L         DATA 0xca
+0000             76   TH2            DATA 0xcd
+0000             77   TL2            DATA 0xcc
+0000             78   SPCON          DATA 0xc3
+0000             79   SPSTA          DATA 0xc4
+0000             80   SPDAT          DATA 0xc5
+0000             81   SSCON          DATA 0x93
+0000             82   SSCS           DATA 0x94
+0000             83   SSDAT          DATA 0x95
+0000             84   SSADR          DATA 0x96
+0000             85   KBLS           DATA 0x9c
+0000             86   KBE            DATA 0x9d
+0000             87   KBF            DATA 0x9e
+0000             88   KBMOD          DATA 0x9f
+0000             89   BMSEL          DATA 0x92
+0000             90   FCON           DATA 0xd2
+0000             91   EECON          DATA 0xd2
+0000             92   ACSRA          DATA 0xa3
+0000             93   ACSRB          DATA 0xab
+0000             94   AREF           DATA 0xbd
+0000             95   DADC           DATA 0xa4
+0000             96   DADI           DATA 0xa5
+0000             97   DADL           DATA 0xac
+0000             98   DADH           DATA 0xad
+0000             99   CCON           DATA 0xd8
+0000            100   CMOD           DATA 0xd9
+0000            101   CL             DATA 0xe9
+0000            102   CH             DATA 0xf9
+0000            103   CCAPM0         DATA 0xda
+0000            104   CCAPM1         DATA 0xdb
+0000            105   CCAPM2         DATA 0xdc
+0000            106   CCAPM3         DATA 0xdd
+0000            107   CCAPM4         DATA 0xde
+0000            108   CCAP0H         DATA 0xfa
+0000            109   CCAP1H         DATA 0xfb
+0000            110   CCAP2H         DATA 0xfc
+0000            111   CCAP3H         DATA 0xfd
+0000            112   CCAP4H         DATA 0xfe
+0000            113   CCAP0L         DATA 0xea
+0000            114   CCAP1L         DATA 0xeb
+0000            115   CCAP2L         DATA 0xec
+0000            116   CCAP3L         DATA 0xed
+0000            117   CCAP4L         DATA 0xee
+0000            118   ;--------------------------------------------------------
+0000            119   ; special function bits
+0000            120   ;--------------------------------------------------------
+0000            121   P              BIT 0xd0
+0000            122   F1             BIT 0xd1
+0000            123   OV             BIT 0xd2
+0000            124   RS0            BIT 0xd3
+0000            125   RS1            BIT 0xd4
+0000            126   F0             BIT 0xd5
+0000            127   AC             BIT 0xd6
+0000            128   CY             BIT 0xd7
+0000            129   EX0            BIT 0xa8
+0000            130   ET0            BIT 0xa9
+0000            131   EX1            BIT 0xaa
+0000            132   ET1            BIT 0xab
+0000            133   ES             BIT 0xac
+0000            134   ET2            BIT 0xad
+0000            135   EC             BIT 0xae
+0000            136   EA             BIT 0xaf
+0000            137   PX0            BIT 0xb8
+0000            138   PT0            BIT 0xb9
+0000            139   PX1            BIT 0xba
+0000            140   PT1            BIT 0xbb
+0000            141   PS             BIT 0xbc
+0000            142   PT2            BIT 0xbd
+0000            143   IP0D           BIT 0xbf
+0000            144   PPCL           BIT 0xbe
+0000            145   PT2L           BIT 0xbd
+0000            146   PLS            BIT 0xbc
+0000            147   PT1L           BIT 0xbb
+0000            148   PX1L           BIT 0xba
+0000            149   PT0L           BIT 0xb9
+0000            150   PX0L           BIT 0xb8
+0000            151   RXD            BIT 0xb0
+0000            152   TXD            BIT 0xb1
+0000            153   INT0           BIT 0xb2
+0000            154   INT1           BIT 0xb3
+0000            155   T0             BIT 0xb4
+0000            156   T1             BIT 0xb5
+0000            157   WR             BIT 0xb6
+0000            158   RD             BIT 0xb7
+0000            159   RI             BIT 0x98
+0000            160   TI             BIT 0x99
+0000            161   RB8            BIT 0x9a
+0000            162   TB8            BIT 0x9b
+0000            163   REN            BIT 0x9c
+0000            164   SM2            BIT 0x9d
+0000            165   SM1            BIT 0x9e
+0000            166   SM0            BIT 0x9f
+0000            167   IT0            BIT 0x88
+0000            168   IE0            BIT 0x89
+0000            169   IT1            BIT 0x8a
+0000            170   IE1            BIT 0x8b
+0000            171   TR0            BIT 0x8c
+0000            172   TF0            BIT 0x8d
+0000            173   TR1            BIT 0x8e
+0000            174   TF1            BIT 0x8f
+0000            175   CP_RL2         BIT 0xc8
+0000            176   C_T2           BIT 0xc9
+0000            177   TR2            BIT 0xca
+0000            178   EXEN2          BIT 0xcb
+0000            179   TCLK           BIT 0xcc
+0000            180   RCLK           BIT 0xcd
+0000            181   EXF2           BIT 0xce
+0000            182   TF2            BIT 0xcf
+0000            183   CF             BIT 0xdf
+0000            184   CR             BIT 0xde
+0000            185   CCF4           BIT 0xdc
+0000            186   CCF3           BIT 0xdb
+0000            187   CCF2           BIT 0xda
+0000            188   CCF1           BIT 0xd9
+0000            189   CCF0           BIT 0xd8
+0000              2   org 0000H
+0000 0204FF       3      ljmp MainProgram
+0003              4   
+0003              5   CLK  EQU 22118400
+0003              6   BAUD equ 115200
+0003              7   BRG_VAL equ (0x100-(CLK/(16*BAUD)))
+0003              8   REF equ 4.096       ;reference at LM4040
+0003              9   
+0003             10   ; These ’EQU’ must match the wiring between the microcontroller and ADC
+0003             11   CE_ADC EQU P2.0
+0003             12   MY_MOSI EQU P2.1
+0003             13   MY_MISO EQU P2.2
+0003             14   MY_SCLK EQU P2.3
+0003             15   BEEPER EQU P2.4 ; placeholder pin for beeper
+0003             16   
+0003             17   TIMER0_RELOAD_L DATA 0xf2
+0003             18   TIMER1_RELOAD_L DATA 0xf3
+0003             19   TIMER0_RELOAD_H DATA 0xf4
+0003             20   TIMER1_RELOAD_H DATA 0xf5
+0003             21   
+0003             22   TIMER0_RATE   EQU 4096             ; 2048Hz squarewave (peak amplitude of CEM-1203 speaker)
+0003             23   TIMER0_RELOAD EQU ((65536-(CLK/TIMER0_RATE)))
+0003             24   TIMER2_RATE   EQU 1000     ; 1000Hz, for a timer tick of 1ms
+0003             25   TIMER2_RELOAD EQU ((65536-(CLK/TIMER2_RATE)))
+0003             26   
+0003             27   ; buttons
+0003             28   BOOT_BUTTON   equ P4.5
+0003             29   
+0003             30   ; External interrupt 0 vector (not used in this code)
+0003             31   org 0x0003
+0003 32          32            reti
+0004             33   
+0004             34   ; Timer/Counter 0 overflow interrupt vector
+000B             35   org 0x000B
+000B 020439      36            ljmp Timer0_ISR
+000E             37   
+000E             38   ; External interrupt 1 vector (not used in this code)
+0013             39   org 0x0013
+0013 32          40            reti
+0014             41   
+0014             42   ; Timer/Counter 1 overflow interrupt vector (not used in this code)
+001B             43   org 0x001B
+001B 32          44            reti
+001C             45   
+001C             46   ; Serial port receive/transmit interrupt vector (not used in this code)
+0023             47   org 0x0023 
+0023 32          48            reti
+0024             49            
+0024             50   ; Timer/Counter 2 overflow interrupt vector
+002B             51   org 0x002B
+002B 020453      52            ljmp Timer2_ISR
+002E             53            
+0030             54   dseg at 0x30
+0030             55   ;future variables
+0030             56   x:   ds 4
+0034             57   y:   ds 4
+0038             58   bcd: ds 5
+003D             59   Result: ds 2
+003F             60   coldtemp: ds 1
+0040             61   hottemp:ds 4
+0044             62   soaktemp: ds 2
+0046             63   soaktime: ds 1
+0047             64   reflowtemp: ds 2
+0049             65   reflowtime: ds 1
+004A             66   countererror: ds 1
+004B             67   temperature:ds 4
+004F             68   Count1ms:     ds 2 ; Used to determine when half second has passed 
+0051             69   reflowparam: ds 1
+0052             70   second: ds 1
+0053             71   minute: ds 1
+0054             72   temp: ds 1
+0055             73   count: ds 1
+0056             74   
+0000             75   BSEG
+0000             76   startflag: dbit 1
+0001             77   errorflag: dbit 1
+0002             78   mf: dbit 1
+0003             79   
+002E             80   CSEG
+002E             81   ; These 'equ' must match the wiring between the microcontroller and the LCD!
+002E             82   LCD_RS equ P1.1
+002E             83   LCD_RW equ P1.2
+002E             84   LCD_E  equ P1.3
+002E             85   LCD_D4 equ P3.2
+002E             86   LCD_D5 equ P3.3
+002E             87   LCD_D6 equ P3.4
+002E             88   LCD_D7 equ P3.5
+002E             89   
+002E             90   StartButton equ P0.4 
+002E             91   BUTTON_1 equ P0.3
+002E             92   BUTTON_2 equ P0.2
+002E             93   BUTTON_3 equ P0.7
+002E             94   OvenButton equ P2.5
+002E             95   
+002E             96   
+                 98   $LIST
+00FA            100   
+                546   $LIST
+                102   $LIST
+036A            104   
+036A            105   
+036A            106   ; constant strings  
+036A 54656D70   107   Test_msg:  db 'Temp:xx.xx*C', 0
+     3A78782E
+     78782A43
+     00
+0377 312E536F   108   MenuMessage1: db '1.Soak Temp', 0   ;used when selecting parameter
+     616B2054
+     656D7000
+0383 322E536F   109   MenuMessage2: db '2.Soak Time', 0
+     616B2054
+     696D6500
+038F 332E5265   110   MenuMessage3: db '3.Reflow Temp', 0
+     666C6F77
+     2054656D
+     7000
+039D 342E5265   111   MenuMessage4: db '4.Reflow Time', 0
+     666C6F77
+     2054696D
+     6500
+03AB 536F616B   112   MenuSoakTemp: db 'Soak Temp:', 0  ;used when changing parameter
+     2054656D
+     703A00
+03B6 536F616B   113   MenuSoakTime: db 'Soak Time:', 0
+     2054696D
+     653A00
+03C1 5265666C   114   MenuReflowTemp: db 'Reflow Temp:', 0
+     6F772054
+     656D703A
+     00
+03CE 5265666C   115   MenuReflowTime: db 'Reflow Time:', 0
+     6F772054
+     696D653A
+     00
+03DB 5265666C   116   ReflowStateMess: db 'Reflow State', 0
+     6F772053
+     74617465
+     00
+03E8 536F616B   117   SoakState: db 'Soak State', 0
+     20537461
+     746500
+03F3 54656D70   118   TemperatureRise: db 'Temp. Increase',0
+     2E20496E
+     63726561
+     736500
+0402 4F76656E   119   CoolingTemp: db 'Oven is cooling.',0
+     20697320
+     636F6F6C
+     696E672E
+     00
+0413            120   
+0413 20202020   121   Blank: db '              ',0
+     20202020
+     20202020
+     202000
+0422            122   
+0422            123   ;---------------------------------;
+0422            124   ; Routine to initialize the ISR   ;
+0422            125   ; for timer 0                     ;
+0422            126   ;---------------------------------;
+0422            127   
+0422            128   Timer0_Init:
+0422 E589       129            mov a, TMOD
+0424 54F0       130            anl a, #0xf0 ; Clear the bits for timer 0
+0426 4401       131            orl a, #0x01 ; Configure timer 0 as 16-timer
+0428 F589       132            mov TMOD, a
+042A 758CEA     133            mov TH0, #high(TIMER0_RELOAD)
+042D 758AE8     134            mov TL0, #low(TIMER0_RELOAD)
+0430            135            ; Set autoreload value
+0430 75F4EA     136            mov TIMER0_RELOAD_H, #high(TIMER0_RELOAD)
+0433 75F2E8     137            mov TIMER0_RELOAD_L, #low(TIMER0_RELOAD)
+0436            138            ; Enable the timer and interrupts
+0436 D2A9       139       setb ET0  ; Enable timer 0 interrupt
+0438            140       ;setb TR0  ; Start timer 0
+0438 22         141            ret
+0439            142   
+0439            143   ;---------------------------------;
+0439            144   ; ISR for timer 0.  Set to execute;
+0439            145   ; every 1/4096Hz to generate a    ;
+0439            146   ; 2048 Hz square wave at pin P3.7 ;
+0439            147   ;---------------------------------;
+0439            148   
+0439            149   Timer0_ISR:
+0439            150   ;        cpl SOUND_OUT; Connect speaker to P3.7!
+0439 32         151            reti
+043A            152     
+043A            153   ;---------------------------------;
+043A            154   ; Routine to initialize the ISR   ;
+043A            155   ; for timer 2                     ;
+043A            156   ;---------------------------------;
+043A            157   Timer2_Init:
+043A 75C800     158            mov T2CON, #0 ; Stop timer/counter.  Autoreload mode.
+043D 75CDA9     159            mov TH2, #high(TIMER2_RELOAD)
+0440 75CC9A     160            mov TL2, #low(TIMER2_RELOAD)
+0443            161            ; Set the reload value
+0443 75CBA9     162            mov RCAP2H, #high(TIMER2_RELOAD)
+0446 75CA9A     163            mov RCAP2L, #low(TIMER2_RELOAD)
+0449            164            ; Init One millisecond interrupt counter.  It is a 16-bit variable made with two 8-bit parts
+0449 E4         165            clr a
+044A F54F       166            mov Count1ms+0, a
+044C F550       167            mov Count1ms+1, a
+044E            168            ; Enable the timer and interrupts
+044E D2AD       169       setb ET2  ; Enable timer 2 interrupt
+0450 D2CA       170       setb TR2  ; Enable timer 2
+0452 22         171            ret
+0453            172   
+0453            173   ;---------------------------------;
+0453            174   ; ISR for timer 2                 ;
+0453            175   ;---------------------------------;
+0453            176   Timer2_ISR:
+0453 C2CF       177            clr TF2  ; Timer 2 doesn't clear TF2 automatically. Do it in ISR
+0455 B2B6       178            cpl P3.6 ; To check the interrupt rate with oscilloscope. It must be precisely a 1 ms pulse.
+0457            179            
+0457            180            ; The two registers used in the ISR must be saved in the stack
+0457 C0E0       181            push acc
+0459 C0D0       182            push psw
+045B            183            
+045B            184            ; Increment the 16-bit one mili second counter
+045B 054F       185            inc Count1ms+0    ; Increment the low 8-bits first
+045D E54F       186            mov a, Count1ms+0 ; If the low 8-bits overflow, then increment high 8-bits
+045F 7002       187            jnz Inc_Done
+0461 0550       188            inc Count1ms+1
+0463            189   
+0463            190     Inc_Done:
+0463            191            ; Check if half second has passed
+0463 E54F       192            mov a, Count1ms+0
+0465 B4F411     193            cjne a, #low(500), Timer2_ISR_done ; Warning: this instruction changes the carry flag!
+0468 E550       194            mov a, Count1ms+1
+046A B4010C     195            cjne a, #high(500), Timer2_ISR_done
+046D            196            
+046D            197       ; cpl TR0 ; Enable/disable timer/counter 0. This line creates a beep-silence-beep-silence sound.
+046D            198       ; where is halfsecondflag?                                   
+046D            199                                            ; Reset to zero the milli-seconds counter, it is a 16-bit variable
+046D E4         200            clr a
+046E F54F       201            mov Count1ms+0, a
+0470 F550       202            mov Count1ms+1, a
+0472            203     
+0472 E552       204            mov a, second   ; Increment the BCD counter
+0474            205   
+0474 2401       206            add a, #0x01 ;THIS IS ADDING SECONDS
+0476            207   
+0476 D4         208            da a ; Decimal adjust instruction.  Check datasheet for more details!
+0477 F552       209            mov second, a
+0479            210            
+0479            211   Timer2_ISR_done:
+0479 D0D0       212            pop psw
+047B D0E0       213            pop acc
+047D 32         214            reti
+047E            215      
+047E            216   ;---------------------------------;
+047E            217   ; initialize the slave                 ;
+047E            218   ;---------------------------------;
+047E            219   
+047E            220   INIT_SPI:
+047E D2A2       221    setb MY_MISO ; Make MISO an input pin
+0480 C2A3       222    clr MY_SCLK ; For mode (0,0) SCLK is zero
+0482 22         223    ret
+0483            224   
+0483            225   ;---------------------------------;
+0483            226   ; receive and send data                          ;
+0483            227   ;---------------------------------;
+0483            228   
+0483            229   DO_SPI_G:
+0483 C0E0       230             push acc
+0485 7900       231             mov R1, #0 ; Received byte stored in R1
+0487 7A08       232             mov R2, #8 ; Loop counter (8-bits)
+0489            233   DO_SPI_G_LOOP:
+0489 E8         234             mov a, R0 ; Byte to write is in R0
+048A 33         235             rlc a ; Carry flag has bit to write
+048B F8         236             mov R0, a
+048C 92A1       237             mov MY_MOSI, c
+048E D2A3       238             setb MY_SCLK ; Transmit
+0490 A2A2       239             mov c, MY_MISO ; Read received bit
+0492 E9         240             mov a, R1 ; Save received bit in R1
+0493 33         241             rlc a
+0494 F9         242             mov R1, a
+0495 C2A3       243             clr MY_SCLK
+0497 DAF0       244             djnz R2, DO_SPI_G_LOOP
+0499 D0E0       245             pop acc
+049B 22         246             ret
+049C            247   
+049C            248   ; Send a character using the serial port
+049C            249   putchar1:
+049C 3099FD     250       jnb TI, putchar1
+049F C299       251       clr TI
+04A1 F599       252       mov SBUF, a
+04A3 22         253       ret
+04A4            254   
+04A4            255   ; Send a constant-zero-terminated string using the serial port
+04A4            256   SendString:
+04A4 E4         257       clr A
+04A5 93         258       movc A, @A+DPTR
+04A6 6006       259       jz SendStringDone
+04A8 1200DC     260       lcall putchar
+04AB A3         261       inc DPTR
+04AC 80F6       262       sjmp SendString
+04AE            263   SendStringDone:
+04AE 22         264       ret
+04AF            265   
+04AF            266   Display_10_digit_BCD:
+04AF C0E0       267            push acc
+04B1 7406       267            mov a, #6
+04B3 14         267            dec a
+04B4 1200C1     267            lcall ?Set_Cursor_1 ; Select column and row
+04B7 D0E0       267            pop acc
+04B9 C000       268            push ar0
+04BB A83C       268            mov r0, bcd+4
+04BD 1200C6     268            lcall ?Display_BCD
+04C0 D000       268            pop ar0
+04C2 C000       269            push ar0
+04C4 A83B       269            mov r0, bcd+3
+04C6 1200C6     269            lcall ?Display_BCD
+04C9 D000       269            pop ar0
+04CB C000       270            push ar0
+04CD A83A       270            mov r0, bcd+2
+04CF 1200C6     270            lcall ?Display_BCD
+04D2 D000       270            pop ar0
+04D4 C000       271            push ar0
+04D6 A839       271            mov r0, bcd+1
+04D8 1200C6     271            lcall ?Display_BCD
+04DB D000       271            pop ar0
+04DD C000       272            push ar0
+04DF A838       272            mov r0, bcd+0
+04E1 1200C6     272            lcall ?Display_BCD
+04E4 D000       272            pop ar0
+04E6 22         273            ret
+04E7            274            
+04E7            275   ;---------------------------------;
+04E7            276   ; initialize the serial ports     ;
+04E7            277   ;---------------------------------;
+04E7            278   InitSerialPort:
+04E7            279       ; Since the reset button bounces, we need to wait a bit before
+04E7            280       ; sending messages, otherwise we risk displaying gibberish!
+04E7 79DE       281       mov R1, #222
+04E9 78A6       282       mov R0, #166
+04EB D8FE       283       djnz R0, $   ; 3 cycles->3*45.21123ns*166=22.51519us
+04ED D9FA       284       djnz R1, $-4 ; 22.51519us*222=4.998ms
+04EF            285       ; Now we can proceed with the configuration
+04EF 438780     286            orl     PCON,#0x80
+04F2 759852     287            mov     SCON,#0x52
+04F5 759B00     288            mov     BDRCON,#0x00
+04F8 759AF4     289            mov     BRL,#BRG_VAL
+04FB 759B1E     290            mov     BDRCON,#0x1E ; BDRCON=BRR|TBCK|RBCK|SPD;
+04FE 22         291       ret
+04FF            292    
+04FF            293    ;---------------------------------;
+04FF            294   ; MAIN PROGRAM                                                         ;
+04FF            295   ;---------------------------------;  
+04FF            296   
+04FF            297   MainProgram:
+04FF 75817F     298            mov sp, #07FH ; Initialize the stack pointer
+0502            299            ; Configure P0 in bidirectional mode
+0502 75E600     300       mov P0M0, #0
+0505 75E700     301       mov P0M1, #0
+0508 D2AF       302       setb EA 
+050A 120088     303       lcall LCD_4BIT
+050D 754400     304       mov soaktemp, #0x00
+0510 754500     305       mov soaktemp+1, #0x00
+0513 754600     306       mov soaktime, #0x00
+0516 754700     307       mov reflowtemp, #0x00
+0519 754800     308       mov reflowtemp+1, #0x00
+051C 754900     309       mov reflowtime, #0x00
+051F 755200     310       mov second, #0
+0522            311      ; mov countererror, #0        ; to check if the thermocouple is in the oven
+0522            312                    
+0522            313       ;initial message 
+0522            314      ; Set_Cursor(1, 1)
+0522            315      ; Send_Constant_String(#Test_msg)
+0522            316      ; Set_Cursor(1,11)
+0522            317      ; WriteData(#223) ; print the degree sign   
+0522 755500     318       mov count, #0
+0525            319       
+0525 1204E7     320       lcall InitSerialPort
+0528 12047E     321                    lcall INIT_SPI
+052B 120422     322                    lcall Timer0_Init
+052E            323      ; lcall Timer2_Init
+052E 1206BC     324      lcall TurnOvenOff
+0531            325      
+0531 0207F2     326       ljmp Menu_select1 ;; selecting and setting profiles
+0534            327       
+0534            328   FOREVER: ;this will be how the oven is being controlled ; jump here once start button is pressed!!!
+0534            329   ;------state 1 -------- ;        
+0534 C0E0       330            push acc
+0536 7401       330            mov a, #1
+0538 14         330            dec a
+0539 1200C1     330            lcall ?Set_Cursor_1 ; Select column and row
+053C D0E0       330            pop acc
+053E C083       331            push dph
+0540 C082       331            push dpl
+0542 C0E0       331            push acc
+0544 9003F3     331            mov dptr, #TemperatureRise
+0547 1200B4     331            lcall ?Send_Constant_String
+054A D0E0       331            pop acc
+054C D082       331            pop dpl
+054E D083       331            pop dph
+0550            332    ;  lcall checkstop       ;checks if stop button is pressed. If so, turns off oven and goes back to menu
+0550            333      ;lcall checkerror      ;if error, terminate program and return
+0550 1206A2     334      lcall Readingtemperatures  ;calculates temperature of oven using thermocouple junctions
+0553 1206C2     335      lcall DisplayingLCD
+0556            336   
+0556            337      ;lcall cst ; checking if we have reached Soak Temp yet
+0556            338     ; lcall State_change_BEEPER ; temp = soak temp, so going to soak time state 
+0556            339     
+0556 E53F       340     mov a, coldtemp
+0558 8544F0     341     mov b, soaktemp
+055B 84         342     div AB
+055C E5F0       343     mov a,b 
+055E B400D3     344     cjne a, #0, FOREVER
+0561 1206BC     345     lcall TurnOvenOff
+0564            346     
+0564 C2CA       347      clr tr2                       ; restarting timer 2 to keep track of the time lasped since we reached soaktemp
+0566 7400       348      mov a, #0x0
+0568 F552       349      mov second, a
+056A D2CA       350      setb tr2
+056C 8000       351      sjmp skiped
+056E            352    
+056E            353    skiped:
+056E            354     ; after we reached the soak temp stay there for __ seconds
+056E            355     ;-----state 2 ------;
+056E            356   soaktempchecked:
+056E C0E0       357            push acc
+0570 7401       357            mov a, #1
+0572 14         357            dec a
+0573 1200C1     357            lcall ?Set_Cursor_1 ; Select column and row
+0576 D0E0       357            pop acc
+0578 C083       358            push dph
+057A C082       358            push dpl
+057C C0E0       358            push acc
+057E 9003E8     358            mov dptr, #SoakState
+0581 1200B4     358            lcall ?Send_Constant_String
+0584 D0E0       358            pop acc
+0586 D082       358            pop dpl
+0588 D083       358            pop dph  
+058A            359   ;        lcall checkstop         
+058A 1206A2     360      lcall Readingtemperatures
+058D 1206C2     361      lcall DisplayingLCD
+0590 12062F     362     lcall keepingsoaktempsame ; boundary temp
+0593 12063F     363     lcall keepingsoaktempsame1
+0596 12067A     364     lcall checksoaktime ; if soak time is up go to next state
+0599 80D3       365     sjmp soaktempchecked
+059B            366     
+059B            367   ; ---- state 3 ---- ; increaseing to reflow temp
+059B            368   increasereflowtemp: 
+059B            369    ; lcall checkstop
+059B C0E0       370            push acc
+059D 7401       370            mov a, #1
+059F 14         370            dec a
+05A0 1200C1     370            lcall ?Set_Cursor_1 ; Select column and row
+05A3 D0E0       370            pop acc
+05A5 C083       371            push dph
+05A7 C082       371            push dpl
+05A9 C0E0       371            push acc
+05AB 9003F3     371            mov dptr, #TemperatureRise
+05AE 1200B4     371            lcall ?Send_Constant_String
+05B1 D0E0       371            pop acc
+05B3 D082       371            pop dpl
+05B5 D083       371            pop dph 
+05B7 1206A2     372     lcall Readingtemperatures
+05BA 1206C2     373      lcall DisplayingLCD
+05BD            374      
+05BD            375   
+05BD C3         376     clr c
+05BE E547       377     mov a, reflowtemp
+05C0 953F       378     subb a, coldtemp
+05C2 50D7       379     jnc increasereflowtemp
+05C4            380      
+05C4 1206BC     381     lcall TurnOvenOff  
+05C7            382      
+05C7            383    ; lcall checkingreflowtemp
+05C7            384    ; lcall State_change_BEEPER
+05C7 C2CA       385     clr tr2
+05C9 7400       386     mov a, #0
+05CB F552       387     mov second, a
+05CD D2CA       388     setb tr2
+05CF            389   
+05CF            390     ;----state 4 ---;
+05CF            391    reflowstate:
+05CF            392     ;lcall checkstop
+05CF 1206A2     393     lcall Readingtemperatures
+05D2 1206C2     394      lcall DisplayingLCD
+05D5 C0E0       395            push acc
+05D7 7401       395            mov a, #1
+05D9 14         395            dec a
+05DA 1200C1     395            lcall ?Set_Cursor_1 ; Select column and row
+05DD D0E0       395            pop acc
+05DF C083       396            push dph
+05E1 C082       396            push dpl
+05E3 C0E0       396            push acc
+05E5 9003DB     396            mov dptr, #ReflowStateMess
+05E8 1200B4     396            lcall ?Send_Constant_String
+05EB D0E0       396            pop acc
+05ED D082       396            pop dpl
+05EF D083       396            pop dph 
+05F1 120659     397     lcall keepingreflowtempsame
+05F4 120669     398     lcall keepingreflowtempsame1
+05F7 12068E     399     lcall checkreflowtime
+05FA 80D3       400     sjmp reflowstate
+05FC            401     
+05FC            402    ;------- state5-----;
+05FC            403    cooling:
+05FC C0E0       404            push acc
+05FE 7401       404            mov a, #1
+0600 14         404            dec a
+0601 1200C1     404            lcall ?Set_Cursor_1 ; Select column and row
+0604 D0E0       404            pop acc
+0606 C083       405            push dph
+0608 C082       405            push dpl
+060A C0E0       405            push acc
+060C 900402     405            mov dptr, #CoolingTemp
+060F 1200B4     405            lcall ?Send_Constant_String
+0612 D0E0       405            pop acc
+0614 D082       405            pop dpl
+0616 D083       405            pop dph 
+0618 1206A2     406    lcall Readingtemperatures
+061B 1206C2     407     lcall DisplayingLCD
+061E 120624     408    lcall waitforcooling
+0621            409   ; lcall Open_oven_toaster_BEEPER
+0621            410    
+0621 020621     411    ljmp $
+0624            412     
+0624            413   ;---------------------------------;
+0624            414   ; functions                                                                                  ;
+0624            415   ;---------------------------------; 
+0624            416   
+0624            417   waitforcooling:
+0624            418   
+0624            419   
+0624 C3         420     clr c
+0625 743C       421     mov a, #60
+0627 953F       422     subb a, coldtemp
+0629 5003       423     jnc cooled
+062B 0205FC     424     ljmp cooling
+062E            425     
+062E            426     
+062E            427   ;        load_X(coldtemp)
+062E            428   ;  load_Y(60)
+062E            429   ;  lcall x_gteq_y   ; compare if temp >= 60 
+062E            430   ;  jnb mf, cooled
+062E            431   ;  ljmp cooling
+062E            432     
+062E            433    
+062E            434   cooled:
+062E 22         435            ret
+062F            436   
+062F            437   ; *********** STATE 2 **********
+062F            438   ; After reaching the soak temperature we stay at that temp 
+062F            439   ; for 60 to 120 seconds
+062F            440   
+062F            441   keepingsoaktempsame:
+062F E544       442     mov a, soaktemp
+0631 2405       443     add a, #5
+0633 F530       444     mov x, a
+0635            445      
+0635 C3         446     clr c
+0636 E530       447     mov a, x
+0638 953F       448     subb a, coldtemp
+063A 5014       449     jnc soaktempisokay
+063C 020651     450     ljmp soaktemptoohigh
+063F            451   
+063F            452     ;load_Y(coldtemp)
+063F            453     ;lcall x_gteq_y   ; compare if temp <= soaktemp + 10
+063F            454    ; jnb mf, soaktemptoohigh; if mf!=1 then keep checking
+063F            455    
+063F            456    keepingsoaktempsame1:
+063F            457     ; temp>= soaktemp-10
+063F            458    ; load_Y(5)
+063F            459    ; load_X(soaktemp)
+063F            460    ; lcall sub32   
+063F E544       461     mov a, soaktemp
+0641 C3         462     clr c
+0642 9405       463     subb a, #5
+0644 F530       464     mov x, a
+0646            465     
+0646 C3         466     clr c
+0647 E53F       467     mov a, coldtemp
+0649 9530       468     subb a, x
+064B 5003       469     jnc soaktempisokay
+064D 020655     470     ljmp soaktemptoolow
+0650            471     
+0650            472      
+0650            473     
+0650            474   soaktempisokay:
+0650 22         475            ret
+0651            476     
+0651            477   soaktemptoohigh: 
+0651 1206BC     478     lcall TurnOvenOff
+0654 22         479     ret
+0655            480     
+0655            481   soaktemptoolow:
+0655 1206BF     482            lcall TurnOvenOn
+0658 22         483     ret
+0659            484     
+0659            485    keepingreflowtempsame:
+0659 E547       486     mov a, reflowtemp
+065B 2405       487     add a, #5
+065D F530       488     mov x, a
+065F            489      
+065F C3         490     clr c
+0660 E530       491     mov a, x
+0662 953F       492     subb a, coldtemp
+0664 50EA       493     jnc soaktempisokay
+0666 020651     494     ljmp soaktemptoohigh
+0669            495   
+0669            496     ;load_Y(coldtemp)
+0669            497     ;lcall x_gteq_y   ; compare if temp <= soaktemp + 10
+0669            498    ; jnb mf, soaktemptoohigh; if mf!=1 then keep checking
+0669            499    
+0669            500    keepingreflowtempsame1:
+0669            501     ; temp>= soaktemp-10
+0669            502    ; load_Y(5)
+0669            503    ; load_X(soaktemp)
+0669            504    ; lcall sub32   
+0669 E547       505     mov a, reflowtemp
+066B C3         506     clr c
+066C 9405       507     subb a, #5
+066E F530       508     mov x, a
+0670            509     
+0670 C3         510     clr c
+0671 E53F       511     mov a, coldtemp
+0673 9530       512     subb a, x
+0675 50D9       513     jnc soaktempisokay
+0677 020655     514     ljmp soaktemptoolow
+067A            515     
+067A            516    ; lower bound for the straight line for the soak temp: soaktemp-10
+067A            517   ;  load_Y(coldtemp)
+067A            518    ; lcall x_gteq_y   ; compare if temp <= soaktemp - 10 
+067A            519    ; jb mf, soaktemptoolow; if mf!=1 then keep checking
+067A            520    ; ljmp soaktempisokay
+067A            521     
+067A            522   
+067A            523   checksoaktime:
+067A E552       524            mov a, second
+067C B5460E     525     cjne a, soaktime, soaknotdone
+067F 1206BF     526     lcall TurnOvenOn
+0682 C2CA       527     clr tr2
+0684 7400       528     mov a, #0
+0686 F552       529     mov second, a
+0688 D2CA       530     setb tr2
+068A 02059B     531     ljmp increasereflowtemp
+068D            532   soaknotdone:
+068D 22         533            ret 
+068E            534     
+068E            535   checkreflowtime:
+068E E552       536            mov a, second
+0690 B5490E     537     cjne a, reflowtime,reflownotdone
+0693 1206BC     538     lcall TurnOvenOff
+0696 C2CA       539     clr tr2
+0698 7400       540     mov a, #0
+069A F552       541     mov second, a
+069C D2CA       542     setb tr2
+069E 0205FC     543     ljmp cooling
+06A1            544   reflownotdone:
+06A1 22         545            ret
+06A2            546   
+06A2            547   ; reading the thermocouple junction values 
+06A2            548   Readingtemperatures:
+06A2 120726     549     lcall readingcoldjunction ;answer in x is saved in variable called 'coldtemp'
+06A5            550   
+06A5 E530       551     mov a, x
+06A7 F53F       552     mov coldtemp, a ;final temperature is in the temperature variable
+06A9 22         553     ret
+06AA            554   
+06AA            555   ; checking if the temperture at the hot end is equal to soak temp yet
+06AA            556   
+06AA            557   
+06AA            558   ;checkingsoaktemperature: 
+06AA            559   ;  clr c
+06AA            560    ; mov a, soaktemp
+06AA            561    ; subb a, coldtemp
+06AA            562    ; jnc Jump_to_FOREVER  
+06AA            563    ; lcall TurnOvenOff
+06AA            564    ; ret
+06AA            565   Jump_to_FOREVER:
+06AA 020534     566            ljmp FOREVER
+06AD            567   
+06AD            568   ; checking if the temperture at the hot end is equal to reflow temp yet
+06AD            569   
+06AD            570   
+06AD            571    ;stop the process at any time  
+06AD            572   checkstop:                     ; stop the reflow process
+06AD 208405     573            jb STARTBUTTON, return
+06B0 3084FD     574            jnb STARTBUTTON, $
+06B3 8001       575            sjmp stop
+06B5            576   return:
+06B5 22         577     ret
+06B6            578   stop:
+06B6 1206BC     579            lcall TurnOvenOff
+06B9 0206B9     580       ljmp $
+06BC            581   
+06BC            582     
+06BC            583   ;---------------------------------- ;
+06BC            584   ; SSR Box communicating with the           ;
+06BC            585   ; Microcontroller                                                                        ;
+06BC            586   ;(1) uses OvenButton to communicate ; 
+06BC            587     ;with the transistor to turn the       ;
+06BC            588     ;oven or off                                                                                   ;
+06BC            589   ;(2)                                                                                                                             ;
+06BC            590   ;                                                                                                                                                ;
+06BC            591   ;                                                                                                                                                ;
+06BC            592   ;-----------------------------------;
+06BC            593            
+06BC            594   TurnOvenOff:
+06BC C2A5       595            clr OvenButton  
+06BE 22         596     ret
+06BF            597   TurnOvenOn:
+06BF D2A5       598            setb OvenButton
+06C1 22         599     ret
+06C2            600   
+06C2            601   DisplayingLCD:
+06C2 C0E0       602            push acc
+06C4 7401       602            mov a, #1
+06C6 14         602            dec a
+06C7 1200BF     602            lcall ?Set_Cursor_2 ; Select column and row
+06CA D0E0       602            pop acc
+06CC            602   
+06CC C000       603            push ar0
+06CE A852       603            mov r0, second
+06D0 1200C6     603            lcall ?Display_BCD
+06D3 D000       603            pop ar0
+06D5            604            
+06D5 C0E0       605            push acc
+06D7 740C       605            mov a, #12
+06D9 14         605            dec a
+06DA 1200BF     605            lcall ?Set_Cursor_2 ; Select column and row
+06DD D0E0       605            pop acc
+06DF 853F30     606            mov x, coldtemp
+06E2 1200FA     607            lcall hex2bcd
+06E5            608            
+06E5 C000       609            push ar0
+06E7 A838       609            mov r0, bcd
+06E9 1200C6     609            lcall ?Display_BCD
+06EC D000       609            pop ar0
+06EE C0E0       610            push acc
+06F0 740F       610            mov a, #15
+06F2 14         610            dec a
+06F3 1200BF     610            lcall ?Set_Cursor_2 ; Select column and row
+06F6 D0E0       610            pop acc
+06F8 74DF       611            mov a, #0xDF
+06FA 12007E     611            lcall ?WriteData
+06FD C0E0       612            push acc
+06FF 7410       612            mov a, #16
+0701 14         612            dec a
+0702 1200BF     612            lcall ?Set_Cursor_2 ; Select column and row
+0705 D0E0       612            pop acc
+0707 7443       613            mov a, #'C'
+0709 12007E     613            lcall ?WriteData
+070C            614       
+070C 22         615       ret
+070D            616       
+070D            617       
+070D            618   
+070D            619   
+070D            620   
+070D            621   ;As a safety measure, the reflow process must be aborted if the oven doesn’t reach at least 50oC in the first 60 seconds of operation
+070D            622   checkerror: 
+070D C0E0       623            push acc
+070F C0D0       624     push psw
+0711            625     
+0711            626   ;  mov x, second
+0711            627   ;  Load_y(60)
+0711            628   ;  lcall x_gteq_y
+0711            629   ;  jnb mf, noerror; if mf = 0, then x<y, time<60secs, don't need to check time yet
+0711            630     ;check temp because time>60sec
+0711            631     
+0711 C3         632     clr c
+0712 7460       633     mov a, #0x60
+0714 9552       634     subb a, second
+0716 5009       635     jnc noerror
+0718            636     
+0718 7432       637     mov a, #50
+071A 953F       638     subb a, coldtemp
+071C 5003       639     jnc noerror
+071E 1206BC     640     lcall TurnOvenOff
+0721            641     
+0721            642     ;mov x, coldtemp
+0721            643     ;Load_y(50)
+0721            644     ;lcall x_gteq_y
+0721            645     ;jb mf, noerror  ;if mf = 1, then x>=y which is what we want, no error
+0721            646     ;there is error, so turn off oven
+0721            647     ;lcall TurnOvenOff
+0721            648     
+0721            649   noerror:
+0721 D0D0       650     pop psw
+0723 D0E0       651     pop acc 
+0725 22         652     ret
+0726            653            
+0726            654   ;------------------------------;
+0726            655   ; Temperature Reader From Sam     ;
+0726            656   ;------------------------------;
+0726            657            
+0726            658   readingcoldjunction: ;read the cold junction from the adc
+0726            659   ;reading the adc
+0726 C0E0       660            push acc
+0728 C0D0       661       push psw
+072A            662     
+072A C2A0       663            clr CE_ADC 
+072C 7801       664            mov R0, #00000001B ; Start bit:1 
+072E 120483     665            lcall DO_SPI_G
+0731 7880       666            mov R0, #10000000B ; Single ended, read channel 0 
+0733 120483     667            lcall DO_SPI_G 
+0736 E9         668            mov a, R1          ; R1 contains bits 8 and 9 
+0737 5403       669            anl a, #00000011B  ; We need only the two least significant bits 
+0739 F53E       670            mov Result+1, a    ; Save result high.
+073B 7855       671            mov R0, #55H ; It doesn't matter what we transmit... 
+073D 120483     672            lcall DO_SPI_G 
+0740 893D       673            mov Result, R1     ; R1 contains bits 0 to 7.  Save result low. 
+0742 D2A0       674            setb CE_ADC 
+0744            675            ;wait for 1 second 
+0744 C002       676            push AR2
+0746 7AFA       676            mov R2, #250
+0748 120039     676            lcall ?Wait_Milli_Seconds
+074B D002       676            pop AR2
+074D C002       677            push AR2
+074F 7AFA       677            mov R2, #250
+0751 120039     677            lcall ?Wait_Milli_Seconds
+0754 D002       677            pop AR2
+0756            678     
+0756 120762     679            lcall Calculate_Temp_in_C 
+0759 E530       680       mov a, x
+075B F53F       681       mov coldtemp, a
+075D            682     
+075D D0D0       683              pop psw
+075F D0E0       684              pop acc
+0761 22         685              ret   
+0762            686               
+0762            687   
+0762            688   ;Trying to transfer the binary value in ADC into BCD and then into 
+0762            689   ;ASCII to show in putty
+0762            690   Calculate_Temp_in_C:     
+0762 E4         691            clr a 
+0763 753000     692            mov x+0, #low (0 % 0x10000) 
+0766 753100     692            mov x+1, #high(0 % 0x10000) 
+0769 753200     692            mov x+2, #low (0 / 0x10000) 
+076C 753300     692            mov x+3, #high(0 / 0x10000)     ; 
+076F 753400     693            mov y+0, #low (0 % 0x10000) 
+0772 753500     693            mov y+1, #high(0 % 0x10000) 
+0775 753600     693            mov y+2, #low (0 / 0x10000) 
+0778 753700     693            mov y+3, #high(0 / 0x10000) 
+077B            694            ; load the result into X 
+077B E53D       695            mov a, Result+0
+077D F530       696            mov X, a
+077F E53E       697            mov a, Result+1
+0781 F531       698            mov X+1, a
+0783 75349A     699            mov y+0, #low (410 % 0x10000) 
+0786 753501     699            mov y+1, #high(410 % 0x10000) 
+0789 753600     699            mov y+2, #low (410 / 0x10000) 
+078C 753700     699            mov y+3, #high(410 / 0x10000) 
+078F 120274     700            lcall mul32;
+0792 7534FF     701            mov y+0, #low (1023 % 0x10000) 
+0795 753503     701            mov y+1, #high(1023 % 0x10000) 
+0798 753600     701            mov y+2, #low (1023 / 0x10000) 
+079B 753700     701            mov y+3, #high(1023 / 0x10000) 
+079E 120301     702            lcall div32;  
+07A1            703            ;calculte temperature 
+07A1 753411     704            mov y+0, #low (273 % 0x10000) 
+07A4 753501     704            mov y+1, #high(273 % 0x10000) 
+07A7 753600     704            mov y+2, #low (273 / 0x10000) 
+07AA 753700     704            mov y+3, #high(273 / 0x10000) 
+07AD 853054     705            mov temp, X
+07B0 1201E0     706            lcall sub32
+07B3 1200FA     707            lcall hex2bcd ; converts binary in x to BCD in BCD
+07B6            708            ;Set_Cursor(2, 13)
+07B6            709            ;Display_BCD(bcd)
+07B6            710   ;        lcall Display_Temp_Putty
+07B6 22         711            ret
+07B7            712   
+07B7            713   
+07B7            714                    
+07B7            715   ; Display Temperature in Putty!
+07B7            716   Display_Temp_Putty:
+07B7 C000       717            push ar0
+07B9 A839       717            mov r0, bcd+1
+07BB 1200E4     717            lcall ?Send_BCD
+07BE D000       717            pop ar0
+07C0 C000       718            push ar0
+07C2 A838       718            mov r0, bcd
+07C4 1200E4     718            lcall ?Send_BCD
+07C7 D000       718            pop ar0
+07C9 740D       719            mov a, #'\r'
+07CB 1200DC     720            lcall putchar
+07CE 740A       721            mov a, #'\n'
+07D0 1200DC     722            lcall putchar
+07D3 22         723            ret     
+07D4            724   
+07D4            725   ; Display Temperature in LCD
+07D4            726   Display_Temp_LCD:
+07D4            727   ; show temp in Celcius 
+07D4 C0E0       728            push acc
+07D6 7406       728            mov a, #6
+07D8 14         728            dec a
+07D9 1200C1     728            lcall ?Set_Cursor_1 ; Select column and row
+07DC D0E0       728            pop acc;
+07DE C000       729            push ar0
+07E0 A839       729            mov r0, bcd+1
+07E2 1200C6     729            lcall ?Display_BCD
+07E5 D000       729            pop ar0
+07E7 C0E0       730            push acc
+07E9 7409       730            mov a, #9
+07EB 14         730            dec a
+07EC 1200C1     730            lcall ?Set_Cursor_1 ; Select column and row
+07EF D0E0       730            pop acc;  
+07F1 22         731            ret
+07F2            732            
+07F2            733   ; MENU SELECT;   
+07F2            734            
+07F2            735            
+07F2            736   Menu_select1:  
+07F2 7401       737            mov a, #0x01
+07F4 120083     737            lcall ?WriteCommand
+07F7 C002       738            push AR2
+07F9 7A32       738            mov R2, #50
+07FB 120039     738            lcall ?Wait_Milli_Seconds
+07FE D002       738            pop AR2
+0800            739   Menu_select2:
+0800 C0E0       740            push acc
+0802 7401       740            mov a, #1
+0804 14         740            dec a
+0805 1200C1     740            lcall ?Set_Cursor_1 ; Select column and row
+0808 D0E0       740            pop acc
+080A C083       741            push dph
+080C C082       741            push dpl
+080E C0E0       741            push acc
+0810 900377     741            mov dptr, #MenuMessage1
+0813 1200B4     741            lcall ?Send_Constant_String
+0816 D0E0       741            pop acc
+0818 D082       741            pop dpl
+081A D083       741            pop dph
+081C C0E0       742            push acc
+081E 7401       742            mov a, #1
+0820 14         742            dec a
+0821 1200BF     742            lcall ?Set_Cursor_2 ; Select column and row
+0824 D0E0       742            pop acc
+0826 C083       743            push dph
+0828 C082       743            push dpl
+082A C0E0       743            push acc
+082C 900383     743            mov dptr, #MenuMessage2
+082F 1200B4     743            lcall ?Send_Constant_String
+0832 D0E0       743            pop acc
+0834 D082       743            pop dpl
+0836 D083       743            pop dph
+0838            744     
+0838 C002       745            push AR2
+083A 7A32       745            mov R2, #50
+083C 120039     745            lcall ?Wait_Milli_Seconds
+083F D002       745            pop AR2 ;go to set Soak Temperature
+0841 208306     746     jb BUTTON_1, Menu_select2_2
+0844 3083FD     747     jnb BUTTON_1, $
+0847 020897     748     ljmp Jump_to_Set_SoakTemp1
+084A            749     
+084A            750   Menu_select2_2:
+084A C002       751            push AR2
+084C 7A32       751            mov R2, #50
+084E 120039     751            lcall ?Wait_Milli_Seconds
+0851 D002       751            pop AR2 ;go to set Soak Time
+0853 208206     752     jb BUTTON_2, Menu_select2_3
+0856 3082FD     753     jnb BUTTON_2, $
+0859 02089A     754     ljmp Jump_to_Set_SoakTime1
+085C            755     
+085C            756   Menu_select2_3:
+085C C002       757            push AR2
+085E 7A32       757            mov R2, #50
+0860 120039     757            lcall ?Wait_Milli_Seconds
+0863 D002       757            pop AR2 ;go to second set of menus
+0865 208706     758     jb BUTTON_3, Menu_select2_4
+0868 3087FD     759     jnb BUTTON_3, $
+086B 0208A0     760     ljmp Jump_to_Menu_select3
+086E            761     
+086E            762   Menu_select2_4:
+086E C002       763            push AR2
+0870 7A32       763            mov R2, #50
+0872 120039     763            lcall ?Wait_Milli_Seconds
+0875 D002       763            pop AR2   ; start the reflow process
+0877 208423     764     jb StartButton, Jump_to_Menu_select2_1
+087A 3084FD     765     jnb StartButton, $
+087D 020880     766     ljmp Jump_To_FOREVER1
+0880            767     
+0880            768   Jump_To_FOREVER1:
+0880 7401       769            mov a, #0x01
+0882 120083     769            lcall ?WriteCommand
+0885 C002       770            push AR2
+0887 7A32       770            mov R2, #50
+0889 120039     770            lcall ?Wait_Milli_Seconds
+088C D002       770            pop AR2
+088E 12043A     771     lcall Timer2_init
+0891            772            
+0891 755200     773            mov second, #0
+0894            774            
+0894 020534     775            ljmp FOREVER
+0897            776   
+0897            777   Jump_to_Set_SoakTemp1:
+0897 0208A3     778            ljmp Set_SoakTemp1
+089A            779     
+089A            780   Jump_to_Set_SoakTime1:
+089A 0209C8     781            ljmp Set_SoakTime1
+089D            782            
+089D            783   Jump_to_Menu_select2_1:
+089D 020800     784            ljmp Menu_select2
+08A0            785     
+08A0            786   Jump_to_Menu_select3:
+08A0 020A78     787            ljmp Menu_select3
+08A3            788   
+08A3            789   ; Settings - Soak Temperature
+08A3            790   Set_SoakTemp1:
+08A3 7401       791            mov a, #0x01
+08A5 120083     791            lcall ?WriteCommand          ;clear display
+08A8 C002       792            push AR2
+08AA 7A32       792            mov R2, #50
+08AC 120039     792            lcall ?Wait_Milli_Seconds
+08AF D002       792            pop AR2
+08B1 C0E0       793            push acc
+08B3 7401       793            mov a, #1
+08B5 14         793            dec a
+08B6 1200C1     793            lcall ?Set_Cursor_1 ; Select column and row
+08B9 D0E0       793            pop acc
+08BB C083       794            push dph
+08BD C082       794            push dpl
+08BF C0E0       794            push acc
+08C1 9003AB     794            mov dptr, #MenuSoakTemp
+08C4 1200B4     794            lcall ?Send_Constant_String
+08C7 D0E0       794            pop acc
+08C9 D082       794            pop dpl
+08CB D083       794            pop dph
+08CD C0E0       795            push acc
+08CF 7401       795            mov a, #1
+08D1 14         795            dec a
+08D2 1200BF     795            lcall ?Set_Cursor_2 ; Select column and row
+08D5 D0E0       795            pop acc
+08D7 C000       796            push ar0
+08D9 A845       796            mov r0, soaktemp+1
+08DB 1200C6     796            lcall ?Display_BCD
+08DE D000       796            pop ar0
+08E0 C0E0       797            push acc
+08E2 7403       797            mov a, #3
+08E4 14         797            dec a
+08E5 1200BF     797            lcall ?Set_Cursor_2 ; Select column and row
+08E8 D0E0       797            pop acc
+08EA C000       798            push ar0
+08EC A844       798            mov r0, soaktemp+0
+08EE 1200C6     798            lcall ?Display_BCD
+08F1 D000       798            pop ar0
+08F3            799   Set_SoakTemp2:
+08F3 20830F     800     jb BUTTON_1, Set_SoakTemp2_2
+08F6 C002       801            push AR2
+08F8 7A32       801            mov R2, #50
+08FA 120039     801            lcall ?Wait_Milli_Seconds
+08FD D002       801            pop AR2
+08FF 208303     802     jb BUTTON_1, Set_SoakTemp2_2
+0902 02092C     803     ljmp SoakTemp_inc
+0905            804   Set_SoakTemp2_2:
+0905 20820F     805     jb BUTTON_2, Set_SoakTemp2_3
+0908 C002       806            push AR2
+090A 7A32       806            mov R2, #50
+090C 120039     806            lcall ?Wait_Milli_Seconds
+090F D002       806            pop AR2
+0911 208203     807     jb BUTTON_2, Set_SoakTemp2_3
+0914 020979     808     ljmp SoakTemp_dec
+0917            809   Set_SoakTemp2_3:
+0917 20870F     810            jb BUTTON_3, Set_SoakTemp2_4
+091A C002       811            push AR2
+091C 7A32       811            mov R2, #50
+091E 120039     811            lcall ?Wait_Milli_Seconds
+0921 D002       811            pop AR2
+0923 208703     812     jb BUTTON_3, Set_SoakTemp2_4
+0926 0207F2     813     ljmp Menu_select1
+0929            814   Set_SoakTemp2_4:
+0929 0208F3     815     ljmp Set_SoakTemp2
+092C            816     
+092C            817   SoakTemp_inc:
+092C E544       818     mov a, soaktemp+0
+092E B4990C     819     cjne a, #0x99, SoakTemp_inc2
+0931 E545       820     mov a, soaktemp+1
+0933 B4020E     821     cjne a, #0x02, SoakTemp_inc3
+0936 E4         822     clr a                      ;299->0
+0937 F545       823     mov soaktemp+1, a
+0939 F544       824     mov soaktemp+0, a
+093B 8013       825     sjmp SoakTemp_inc4
+093D            826   SoakTemp_inc2:   ;regular increment
+093D 2401       827     add a, #0x01
+093F D4         828     da a
+0940 F544       829     mov soaktemp+0, a
+0942 800C       830     sjmp SoakTemp_inc4
+0944            831   SoakTemp_inc3:    ;99->100, 199->200, etc
+0944 E545       832     mov a, soaktemp+1 
+0946 2401       833     add a, #0x01
+0948 D4         834     da a
+0949 F545       835     mov soaktemp+1, a
+094B E4         836     clr a
+094C F544       837     mov soaktemp+0, a
+094E 8000       838     sjmp SoakTemp_inc4
+0950            839   SoakTemp_inc4:  ;display
+0950 C0E0       840            push acc
+0952 7401       840            mov a, #1
+0954 14         840            dec a
+0955 1200BF     840            lcall ?Set_Cursor_2 ; Select column and row
+0958 D0E0       840            pop acc
+095A C000       841            push ar0
+095C A845       841            mov r0, soaktemp+1
+095E 1200C6     841            lcall ?Display_BCD
+0961 D000       841            pop ar0
+0963 C0E0       842            push acc
+0965 7403       842            mov a, #3
+0967 14         842            dec a
+0968 1200BF     842            lcall ?Set_Cursor_2 ; Select column and row
+096B D0E0       842            pop acc
+096D C000       843            push ar0
+096F A844       843            mov r0, soaktemp+0
+0971 1200C6     843            lcall ?Display_BCD
+0974 D000       843            pop ar0
+0976 0208F3     844     ljmp Set_SoakTemp2
+0979            845     
+0979            846   SoakTemp_dec:
+0979 E544       847     mov a, soaktemp+0
+097B B4000D     848     cjne a, #0x00, SoakTemp_dec2
+097E E545       849     mov a, soaktemp+1
+0980 B4000F     850     cjne a, #0x00, SoakTemp_dec3
+0983 754502     851     mov soaktemp+1, #0x02                 ;0->299
+0986 754499     852     mov soaktemp+0, #0x99
+0989 8014       853     sjmp SoakTemp_dec4
+098B            854   SoakTemp_dec2:   ;regular decrement
+098B 2499       855     add a, #0x99
+098D D4         856     da a
+098E F544       857     mov soaktemp+0, a
+0990 800D       858     sjmp SoakTemp_dec4
+0992            859   SoakTemp_dec3:   ;100->99, 200-> 199
+0992 E545       860     mov a, soaktemp+1 
+0994 2499       861     add a, #0x99
+0996 D4         862     da a
+0997 F545       863     mov soaktemp+1, a
+0999 7499       864     mov a, #0x99
+099B F544       865     mov soaktemp+0, a
+099D 8000       866     sjmp SoakTemp_dec4
+099F            867   SoakTemp_dec4:    ;display
+099F C0E0       868            push acc
+09A1 7401       868            mov a, #1
+09A3 14         868            dec a
+09A4 1200BF     868            lcall ?Set_Cursor_2 ; Select column and row
+09A7 D0E0       868            pop acc
+09A9 C000       869            push ar0
+09AB A845       869            mov r0, soaktemp+1
+09AD 1200C6     869            lcall ?Display_BCD
+09B0 D000       869            pop ar0
+09B2 C0E0       870            push acc
+09B4 7403       870            mov a, #3
+09B6 14         870            dec a
+09B7 1200BF     870            lcall ?Set_Cursor_2 ; Select column and row
+09BA D0E0       870            pop acc
+09BC C000       871            push ar0
+09BE A844       871            mov r0, soaktemp+0
+09C0 1200C6     871            lcall ?Display_BCD
+09C3 D000       871            pop ar0
+09C5 0208F3     872     ljmp Set_SoakTemp2
+09C8            873   
+09C8            874   ; Settings - Soak Time
+09C8            875   Set_SoakTime1:
+09C8 7401       876            mov a, #0x01
+09CA 120083     876            lcall ?WriteCommand          ;clear display
+09CD C002       877            push AR2
+09CF 7A32       877            mov R2, #50
+09D1 120039     877            lcall ?Wait_Milli_Seconds
+09D4 D002       877            pop AR2
+09D6 C0E0       878            push acc
+09D8 7401       878            mov a, #1
+09DA 14         878            dec a
+09DB 1200C1     878            lcall ?Set_Cursor_1 ; Select column and row
+09DE D0E0       878            pop acc
+09E0 C083       879            push dph
+09E2 C082       879            push dpl
+09E4 C0E0       879            push acc
+09E6 9003B6     879            mov dptr, #MenuSoakTime
+09E9 1200B4     879            lcall ?Send_Constant_String
+09EC D0E0       879            pop acc
+09EE D082       879            pop dpl
+09F0 D083       879            pop dph
+09F2 C0E0       880            push acc
+09F4 7401       880            mov a, #1
+09F6 14         880            dec a
+09F7 1200BF     880            lcall ?Set_Cursor_2 ; Select column and row
+09FA D0E0       880            pop acc
+09FC C000       881            push ar0
+09FE A846       881            mov r0, soaktime
+0A00 1200C6     881            lcall ?Display_BCD
+0A03 D000       881            pop ar0
+0A05            882   Set_SoakTime2:
+0A05 20830F     883     jb BUTTON_1, Set_SoakTime2_2
+0A08 C002       884            push AR2
+0A0A 7A32       884            mov R2, #50
+0A0C 120039     884            lcall ?Wait_Milli_Seconds
+0A0F D002       884            pop AR2
+0A11 208303     885     jb BUTTON_1, Set_SoakTime2_2
+0A14 020A3E     886     ljmp SoakTime_inc
+0A17            887   Set_SoakTime2_2:
+0A17 20820F     888     jb BUTTON_2, Set_SoakTime2_3
+0A1A C002       889            push AR2
+0A1C 7A32       889            mov R2, #50
+0A1E 120039     889            lcall ?Wait_Milli_Seconds
+0A21 D002       889            pop AR2
+0A23 208203     890     jb BUTTON_2, Set_SoakTime2_3
+0A26 020A5B     891     ljmp SoakTime_dec
+0A29            892   Set_SoakTime2_3:
+0A29 20870F     893            jb BUTTON_3, Set_SoakTime2_4
+0A2C C002       894            push AR2
+0A2E 7A32       894            mov R2, #50
+0A30 120039     894            lcall ?Wait_Milli_Seconds
+0A33 D002       894            pop AR2
+0A35 208703     895     jb BUTTON_3, Set_SoakTime2_4
+0A38 0207F2     896     ljmp Menu_select1
+0A3B            897   Set_SoakTime2_4:
+0A3B 020A05     898     ljmp Set_SoakTime2
+0A3E            899   
+0A3E            900   SoakTime_inc:
+0A3E E546       901            mov a, soaktime
+0A40 2401       902     add a, #0x01
+0A42 D4         903     da a
+0A43 F546       904     mov soaktime, a
+0A45 C0E0       905            push acc
+0A47 7401       905            mov a, #1
+0A49 14         905            dec a
+0A4A 1200BF     905            lcall ?Set_Cursor_2 ; Select column and row
+0A4D D0E0       905            pop acc
+0A4F C000       906            push ar0
+0A51 A846       906            mov r0, soaktime
+0A53 1200C6     906            lcall ?Display_BCD
+0A56 D000       906            pop ar0
+0A58 020A05     907     ljmp Set_SoakTime2
+0A5B            908     
+0A5B            909   SoakTime_dec:
+0A5B E546       910     mov a, soaktime
+0A5D 2499       911            add a, #0x99
+0A5F D4         912            da a
+0A60 F546       913            mov soaktime, a
+0A62 C0E0       914            push acc
+0A64 7401       914            mov a, #1
+0A66 14         914            dec a
+0A67 1200BF     914            lcall ?Set_Cursor_2 ; Select column and row
+0A6A D0E0       914            pop acc
+0A6C C000       915            push ar0
+0A6E A846       915            mov r0, soaktime
+0A70 1200C6     915            lcall ?Display_BCD
+0A73 D000       915            pop ar0
+0A75 020A05     916            ljmp Set_SoakTime2
+0A78            917   
+0A78            918   ; Second set of Menu - Set reflow parameters
+0A78            919   Menu_select3:
+0A78 7401       920            mov a, #0x01
+0A7A 120083     920            lcall ?WriteCommand
+0A7D C002       921            push AR2
+0A7F 7A32       921            mov R2, #50
+0A81 120039     921            lcall ?Wait_Milli_Seconds
+0A84 D002       921            pop AR2
+0A86            922   Menu_select4:
+0A86 C0E0       923            push acc
+0A88 7401       923            mov a, #1
+0A8A 14         923            dec a
+0A8B 1200C1     923            lcall ?Set_Cursor_1 ; Select column and row
+0A8E D0E0       923            pop acc
+0A90 C083       924            push dph
+0A92 C082       924            push dpl
+0A94 C0E0       924            push acc
+0A96 90038F     924            mov dptr, #MenuMessage3
+0A99 1200B4     924            lcall ?Send_Constant_String
+0A9C D0E0       924            pop acc
+0A9E D082       924            pop dpl
+0AA0 D083       924            pop dph
+0AA2 C0E0       925            push acc
+0AA4 7401       925            mov a, #1
+0AA6 14         925            dec a
+0AA7 1200BF     925            lcall ?Set_Cursor_2 ; Select column and row
+0AAA D0E0       925            pop acc
+0AAC C083       926            push dph
+0AAE C082       926            push dpl
+0AB0 C0E0       926            push acc
+0AB2 90039D     926            mov dptr, #MenuMessage4
+0AB5 1200B4     926            lcall ?Send_Constant_String
+0AB8 D0E0       926            pop acc
+0ABA D082       926            pop dpl
+0ABC D083       926            pop dph
+0ABE            927     
+0ABE C002       928            push AR2
+0AC0 7A32       928            mov R2, #50
+0AC2 120039     928            lcall ?Wait_Milli_Seconds
+0AC5 D002       928            pop AR2 ;go to set Reflow Temperature
+0AC7 208306     929     jb BUTTON_1, Menu_select4_2
+0ACA 3083FD     930     jnb BUTTON_1, $
+0ACD 020B09     931     ljmp Jump_to_Set_ReflowTemp1
+0AD0            932     
+0AD0            933   Menu_select4_2:
+0AD0 C002       934            push AR2
+0AD2 7A32       934            mov R2, #50
+0AD4 120039     934            lcall ?Wait_Milli_Seconds
+0AD7 D002       934            pop AR2 ;go to set Reflow Time
+0AD9 208206     935     jb BUTTON_2, Menu_select4_3
+0ADC 3082FD     936     jnb BUTTON_2, $
+0ADF 020B0C     937     ljmp Jump_to_Set_ReflowTime1
+0AE2            938     
+0AE2            939   Menu_select4_3:
+0AE2 C002       940            push AR2
+0AE4 7A32       940            mov R2, #50
+0AE6 120039     940            lcall ?Wait_Milli_Seconds
+0AE9 D002       940            pop AR2 ;go to first set of menus
+0AEB 208706     941     jb BUTTON_3, Menu_select4_4
+0AEE 3087FD     942     jnb BUTTON_3, $
+0AF1 020B12     943     ljmp Jump_to_Menu_select2
+0AF4            944   
+0AF4            945   Menu_select4_4:
+0AF4 C002       946            push AR2
+0AF6 7A32       946            mov R2, #50
+0AF8 120039     946            lcall ?Wait_Milli_Seconds
+0AFB D002       946            pop AR2   ; start the reflow process
+0AFD 20840F     947     jb StartButton, Jump_to_Menu_select3_1
+0B00 3084FD     948     jnb StartButton, $
+0B03 020B06     949     ljmp Jump_To_FOREVER2
+0B06            950   
+0B06            951   Jump_To_FOREVER2:
+0B06 020534     952            ljmp FOREVER
+0B09            953     
+0B09            954   
+0B09            955   Jump_to_Set_ReflowTemp1:
+0B09 020B15     956            ljmp Set_ReflowTemp1
+0B0C            957     
+0B0C            958   Jump_to_Set_ReflowTime1:
+0B0C 020C3A     959            ljmp Set_ReflowTime1
+0B0F            960            
+0B0F            961   Jump_to_Menu_select3_1:
+0B0F 020A86     962            ljmp Menu_select4
+0B12            963     
+0B12            964   Jump_to_Menu_select2:
+0B12 0207F2     965            ljmp Menu_select1
+0B15            966     
+0B15            967   ; Settings - Reflow Temperature
+0B15            968   Set_ReflowTemp1:
+0B15 7401       969            mov a, #0x01
+0B17 120083     969            lcall ?WriteCommand          ;clear display
+0B1A C002       970            push AR2
+0B1C 7A32       970            mov R2, #50
+0B1E 120039     970            lcall ?Wait_Milli_Seconds
+0B21 D002       970            pop AR2
+0B23 C0E0       971            push acc
+0B25 7401       971            mov a, #1
+0B27 14         971            dec a
+0B28 1200C1     971            lcall ?Set_Cursor_1 ; Select column and row
+0B2B D0E0       971            pop acc
+0B2D C083       972            push dph
+0B2F C082       972            push dpl
+0B31 C0E0       972            push acc
+0B33 9003C1     972            mov dptr, #MenuReflowTemp
+0B36 1200B4     972            lcall ?Send_Constant_String
+0B39 D0E0       972            pop acc
+0B3B D082       972            pop dpl
+0B3D D083       972            pop dph
+0B3F C0E0       973            push acc
+0B41 7401       973            mov a, #1
+0B43 14         973            dec a
+0B44 1200BF     973            lcall ?Set_Cursor_2 ; Select column and row
+0B47 D0E0       973            pop acc
+0B49 C000       974            push ar0
+0B4B A848       974            mov r0, reflowtemp+1
+0B4D 1200C6     974            lcall ?Display_BCD
+0B50 D000       974            pop ar0
+0B52 C0E0       975            push acc
+0B54 7403       975            mov a, #3
+0B56 14         975            dec a
+0B57 1200BF     975            lcall ?Set_Cursor_2 ; Select column and row
+0B5A D0E0       975            pop acc
+0B5C C000       976            push ar0
+0B5E A847       976            mov r0, reflowtemp+0
+0B60 1200C6     976            lcall ?Display_BCD
+0B63 D000       976            pop ar0
+0B65            977     
+0B65            978   Set_ReflowTemp2:
+0B65 20830F     979     jb BUTTON_1, Set_ReflowTemp2_2
+0B68 C002       980            push AR2
+0B6A 7A32       980            mov R2, #50
+0B6C 120039     980            lcall ?Wait_Milli_Seconds
+0B6F D002       980            pop AR2
+0B71 208303     981     jb BUTTON_1, Set_ReflowTemp2_2
+0B74 020B9E     982     ljmp ReflowTemp_inc
+0B77            983   Set_ReflowTemp2_2:
+0B77 20820F     984     jb BUTTON_2, Set_ReflowTemp2_3
+0B7A C002       985            push AR2
+0B7C 7A32       985            mov R2, #50
+0B7E 120039     985            lcall ?Wait_Milli_Seconds
+0B81 D002       985            pop AR2
+0B83 208203     986     jb BUTTON_2, Set_ReflowTemp2_3
+0B86 020BEB     987     ljmp ReflowTemp_dec
+0B89            988   Set_ReflowTemp2_3:
+0B89 20870F     989            jb BUTTON_3, Set_ReflowTemp2_4
+0B8C C002       990            push AR2
+0B8E 7A32       990            mov R2, #50
+0B90 120039     990            lcall ?Wait_Milli_Seconds
+0B93 D002       990            pop AR2
+0B95 208703     991     jb BUTTON_3, Set_ReflowTemp2_4
+0B98 020A78     992     ljmp Menu_select3
+0B9B            993   Set_ReflowTemp2_4:
+0B9B 020B65     994     ljmp Set_ReflowTemp2
+0B9E            995    
+0B9E            996   ReflowTemp_inc:
+0B9E E547       997     mov a, reflowtemp+0
+0BA0 B4990C     998     cjne a, #0x99, ReflowTemp_inc2
+0BA3 E548       999     mov a, reflowtemp+1
+0BA5 B4020E    1000     cjne a, #0x02, ReflowTemp_inc3
+0BA8 E4        1001     clr a                      ;299->0
+0BA9 F548      1002     mov reflowtemp+1, a
+0BAB F547      1003     mov reflowtemp+0, a
+0BAD 8013      1004     sjmp ReflowTemp_inc4
+0BAF           1005   ReflowTemp_inc2:   ;regular increment
+0BAF 2401      1006     add a, #0x01
+0BB1 D4        1007     da a
+0BB2 F547      1008     mov reflowtemp+0, a
+0BB4 800C      1009     sjmp ReflowTemp_inc4
+0BB6           1010   ReflowTemp_inc3:    ;99->100, 199->200, etc
+0BB6 E548      1011     mov a, reflowtemp+1 
+0BB8 2401      1012     add a, #0x01
+0BBA D4        1013     da a
+0BBB F548      1014     mov reflowtemp+1, a
+0BBD E4        1015     clr a
+0BBE F547      1016     mov reflowtemp+0, a
+0BC0 8000      1017     sjmp ReflowTemp_inc4
+0BC2           1018   ReflowTemp_inc4:  ;display
+0BC2 C0E0      1019            push acc
+0BC4 7401      1019            mov a, #1
+0BC6 14        1019            dec a
+0BC7 1200BF    1019            lcall ?Set_Cursor_2 ; Select column and row
+0BCA D0E0      1019            pop acc
+0BCC C000      1020            push ar0
+0BCE A848      1020            mov r0, reflowtemp+1
+0BD0 1200C6    1020            lcall ?Display_BCD
+0BD3 D000      1020            pop ar0
+0BD5 C0E0      1021            push acc
+0BD7 7403      1021            mov a, #3
+0BD9 14        1021            dec a
+0BDA 1200BF    1021            lcall ?Set_Cursor_2 ; Select column and row
+0BDD D0E0      1021            pop acc
+0BDF C000      1022            push ar0
+0BE1 A847      1022            mov r0, reflowtemp+0
+0BE3 1200C6    1022            lcall ?Display_BCD
+0BE6 D000      1022            pop ar0
+0BE8 020B65    1023     ljmp Set_ReflowTemp2
+0BEB           1024     
+0BEB           1025   ReflowTemp_dec:
+0BEB E547      1026     mov a, reflowtemp+0
+0BED B4000D    1027     cjne a, #0x00, ReflowTemp_dec2
+0BF0 E548      1028     mov a, reflowtemp+1
+0BF2 B4000F    1029     cjne a, #0x00, ReflowTemp_dec3
+0BF5 754802    1030     mov reflowtemp+1, #0x02                 ;0->299
+0BF8 754799    1031     mov reflowtemp+0, #0x99
+0BFB 8014      1032     sjmp ReflowTemp_dec4
+0BFD           1033   ReflowTemp_dec2:   ;regular decrement
+0BFD 2499      1034     add a, #0x99
+0BFF D4        1035     da a
+0C00 F547      1036     mov reflowtemp+0, a
+0C02 800D      1037     sjmp ReflowTemp_dec4
+0C04           1038   ReflowTemp_dec3:   ;100->99, 200-> 199
+0C04 E548      1039     mov a, reflowtemp+1 
+0C06 2499      1040     add a, #0x99
+0C08 D4        1041     da a
+0C09 F548      1042     mov reflowtemp+1, a
+0C0B 7499      1043     mov a, #0x99
+0C0D F547      1044     mov reflowtemp+0, a
+0C0F 8000      1045     sjmp ReflowTemp_dec4
+0C11           1046   ReflowTemp_dec4:    ;display
+0C11 C0E0      1047            push acc
+0C13 7401      1047            mov a, #1
+0C15 14        1047            dec a
+0C16 1200BF    1047            lcall ?Set_Cursor_2 ; Select column and row
+0C19 D0E0      1047            pop acc
+0C1B C000      1048            push ar0
+0C1D A848      1048            mov r0, reflowtemp+1
+0C1F 1200C6    1048            lcall ?Display_BCD
+0C22 D000      1048            pop ar0
+0C24 C0E0      1049            push acc
+0C26 7403      1049            mov a, #3
+0C28 14        1049            dec a
+0C29 1200BF    1049            lcall ?Set_Cursor_2 ; Select column and row
+0C2C D0E0      1049            pop acc
+0C2E C000      1050            push ar0
+0C30 A847      1050            mov r0, reflowtemp+0
+0C32 1200C6    1050            lcall ?Display_BCD
+0C35 D000      1050            pop ar0
+0C37 020B65    1051     ljmp Set_ReflowTemp2
+0C3A           1052   
+0C3A           1053   ; Settings - Reflow Time
+0C3A           1054   Set_ReflowTime1:
+0C3A 7401      1055            mov a, #0x01
+0C3C 120083    1055            lcall ?WriteCommand          ;clear display
+0C3F C002      1056            push AR2
+0C41 7A32      1056            mov R2, #50
+0C43 120039    1056            lcall ?Wait_Milli_Seconds
+0C46 D002      1056            pop AR2
+0C48 C0E0      1057            push acc
+0C4A 7401      1057            mov a, #1
+0C4C 14        1057            dec a
+0C4D 1200C1    1057            lcall ?Set_Cursor_1 ; Select column and row
+0C50 D0E0      1057            pop acc
+0C52 C083      1058            push dph
+0C54 C082      1058            push dpl
+0C56 C0E0      1058            push acc
+0C58 9003CE    1058            mov dptr, #MenuReflowTime
+0C5B 1200B4    1058            lcall ?Send_Constant_String
+0C5E D0E0      1058            pop acc
+0C60 D082      1058            pop dpl
+0C62 D083      1058            pop dph
+0C64 C0E0      1059            push acc
+0C66 7401      1059            mov a, #1
+0C68 14        1059            dec a
+0C69 1200BF    1059            lcall ?Set_Cursor_2 ; Select column and row
+0C6C D0E0      1059            pop acc
+0C6E C000      1060            push ar0
+0C70 A849      1060            mov r0, reflowtime
+0C72 1200C6    1060            lcall ?Display_BCD
+0C75 D000      1060            pop ar0
+0C77           1061   Set_ReflowTime2:
+0C77 20830F    1062     jb BUTTON_1, Set_ReflowTime2_2
+0C7A C002      1063            push AR2
+0C7C 7A32      1063            mov R2, #50
+0C7E 120039    1063            lcall ?Wait_Milli_Seconds
+0C81 D002      1063            pop AR2
+0C83 208303    1064     jb BUTTON_1, Set_ReflowTime2_2
+0C86 020CB0    1065     ljmp ReflowTime_inc
+0C89           1066   Set_ReflowTime2_2:
+0C89 20820F    1067     jb BUTTON_2, Set_ReflowTime2_3
+0C8C C002      1068            push AR2
+0C8E 7A32      1068            mov R2, #50
+0C90 120039    1068            lcall ?Wait_Milli_Seconds
+0C93 D002      1068            pop AR2
+0C95 208203    1069     jb BUTTON_2, Set_ReflowTime2_3
+0C98 020CCD    1070     ljmp ReflowTime_dec
+0C9B           1071   Set_ReflowTime2_3:
+0C9B 20870F    1072            jb BUTTON_3, Set_ReflowTime2_4
+0C9E C002      1073            push AR2
+0CA0 7A32      1073            mov R2, #50
+0CA2 120039    1073            lcall ?Wait_Milli_Seconds
+0CA5 D002      1073            pop AR2
+0CA7 208703    1074     jb BUTTON_3, Set_ReflowTime2_4
+0CAA 020A78    1075     ljmp Menu_select3
+0CAD           1076   Set_ReflowTime2_4:
+0CAD 020C77    1077     ljmp Set_ReflowTime2
+0CB0           1078   
+0CB0           1079   ReflowTime_inc:
+0CB0 E549      1080            mov a, reflowtime
+0CB2 2401      1081     add a, #0x01
+0CB4 D4        1082     da a
+0CB5 F549      1083     mov reflowtime, a
+0CB7 C0E0      1084            push acc
+0CB9 7401      1084            mov a, #1
+0CBB 14        1084            dec a
+0CBC 1200BF    1084            lcall ?Set_Cursor_2 ; Select column and row
+0CBF D0E0      1084            pop acc
+0CC1 C000      1085            push ar0
+0CC3 A849      1085            mov r0, reflowtime
+0CC5 1200C6    1085            lcall ?Display_BCD
+0CC8 D000      1085            pop ar0
+0CCA 020C77    1086     ljmp Set_ReflowTime2
+0CCD           1087     
+0CCD           1088   ReflowTime_dec:
+0CCD E549      1089     mov a, reflowtime
+0CCF 2499      1090            add a, #0x99
+0CD1 D4        1091            da a
+0CD2 F549      1092            mov reflowtime, a
+0CD4 C0E0      1093            push acc
+0CD6 7401      1093            mov a, #1
+0CD8 14        1093            dec a
+0CD9 1200BF    1093            lcall ?Set_Cursor_2 ; Select column and row
+0CDC D0E0      1093            pop acc
+0CDE C000      1094            push ar0
+0CE0 A849      1094            mov r0, reflowtime
+0CE2 1200C6    1094            lcall ?Display_BCD
+0CE5 D000      1094            pop ar0
+0CE7 020C77    1095            ljmp Set_ReflowTime2
+0CEA           1096            
+0CEA           1097            
+0CEA           1098   EN

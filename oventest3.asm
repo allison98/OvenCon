@@ -59,9 +59,9 @@ bcd: ds 5
 Result: ds 2
 coldtemp: ds 1
 hottemp:ds 4
-soaktemp: ds 1
+soaktemp: ds 2
 soaktime: ds 1
-reflowtemp: ds 1
+reflowtemp: ds 2
 reflowtime: ds 1
 countererror: ds 1
 temperature:ds 4
@@ -301,10 +301,12 @@ MainProgram:
     mov P0M1, #0
     setb EA 
     lcall LCD_4BIT
-    mov soaktemp, #50
-    mov soaktime, #0x30
-    mov reflowtemp, #70
-    mov reflowtime, #0x30
+    mov soaktemp, #0x00
+    mov soaktemp+1, #0x00
+    mov soaktime, #0x00
+    mov reflowtemp, #0x00
+    mov reflowtemp+1, #0x00
+    mov reflowtime, #0x00
     mov second, #0
    ; mov countererror, #0	; to check if the thermocouple is in the oven
 		
@@ -735,7 +737,7 @@ Menu_select1:
   WriteCommand(#0x01)
   Wait_Milli_Seconds(#50)
 Menu_select2:
-Set_Cursor(1, 1)
+  Set_Cursor(1, 1)
   Send_Constant_String(#MenuMessage1)
   Set_Cursor(2, 1)
   Send_Constant_String(#MenuMessage2)
@@ -764,11 +766,9 @@ Menu_select2_4:
   ljmp Jump_To_FOREVER1
   
 Jump_To_FOREVER1:
-Set_Cursor(1,1)
-Send_Constant_String(#Blank)
-Set_Cursor(2,1)
-Send_Constant_String(#Blank)
-lcall Timer2_init
+  WriteCommand(#0x01)
+  Wait_Milli_Seconds(#50)
+  lcall Timer2_init
 	
 	mov second, #0
 	
@@ -793,7 +793,9 @@ Set_SoakTemp1:
   Set_Cursor(1, 1)
   Send_Constant_String(#MenuSoakTemp)
   Set_Cursor(2, 1)
-	Display_BCD(soaktemp)
+  Display_BCD(soaktemp+1)
+  Set_Cursor(2, 3)
+  Display_BCD(soaktemp+0)
 Set_SoakTemp2:
   jb BUTTON_1, Set_SoakTemp2_2
   Wait_Milli_Seconds(#50)
@@ -813,22 +815,61 @@ Set_SoakTemp2_4:
   ljmp Set_SoakTemp2
   
 SoakTemp_inc:
-  mov a, soaktemp
+  mov a, soaktemp+0
+  cjne a, #0x99, SoakTemp_inc2
+  mov a, soaktemp+1
+  cjne a, #0x02, SoakTemp_inc3
+  clr a                      ;299->0
+  mov soaktemp+1, a
+  mov soaktemp+0, a
+  sjmp SoakTemp_inc4
+SoakTemp_inc2:   ;regular increment
   add a, #0x01
   da a
-  mov soaktemp, a
+  mov soaktemp+0, a
+  sjmp SoakTemp_inc4
+SoakTemp_inc3:    ;99->100, 199->200, etc
+  mov a, soaktemp+1 
+  add a, #0x01
+  da a
+  mov soaktemp+1, a
+  clr a
+  mov soaktemp+0, a
+  sjmp SoakTemp_inc4
+SoakTemp_inc4:  ;display
   Set_Cursor(2, 1)
-  Display_BCD(soaktemp)
+  Display_BCD(soaktemp+1)
+  Set_Cursor(2, 3)
+  Display_BCD(soaktemp+0)
   ljmp Set_SoakTemp2
   
 SoakTemp_dec:
-  mov a, soaktemp
-	add a, #0x99
-	da a
-	mov soaktemp, a
-	Set_Cursor(2, 1)
-	Display_BCD(soaktemp)
-	ljmp Set_SoakTemp2
+  mov a, soaktemp+0
+  cjne a, #0x00, SoakTemp_dec2
+  mov a, soaktemp+1
+  cjne a, #0x00, SoakTemp_dec3
+  mov soaktemp+1, #0x02                 ;0->299
+  mov soaktemp+0, #0x99
+  sjmp SoakTemp_dec4
+SoakTemp_dec2:   ;regular decrement
+  add a, #0x99
+  da a
+  mov soaktemp+0, a
+  sjmp SoakTemp_dec4
+SoakTemp_dec3:   ;100->99, 200-> 199
+  mov a, soaktemp+1 
+  add a, #0x99
+  da a
+  mov soaktemp+1, a
+  mov a, #0x99
+  mov soaktemp+0, a
+  sjmp SoakTemp_dec4
+SoakTemp_dec4:    ;display
+  Set_Cursor(2, 1)
+  Display_BCD(soaktemp+1)
+  Set_Cursor(2, 3)
+  Display_BCD(soaktemp+0)
+  ljmp Set_SoakTemp2
 
 ; Settings - Soak Time
 Set_SoakTime1:
@@ -930,7 +971,10 @@ Set_ReflowTemp1:
   Set_Cursor(1, 1)
   Send_Constant_String(#MenuReflowTemp)
   Set_Cursor(2, 1)
-	Display_BCD(reflowtemp)
+  Display_BCD(reflowtemp+1)
+  Set_Cursor(2, 3)
+  Display_BCD(reflowtemp+0)
+  
 Set_ReflowTemp2:
   jb BUTTON_1, Set_ReflowTemp2_2
   Wait_Milli_Seconds(#50)
@@ -948,25 +992,63 @@ Set_ReflowTemp2_3:
   ljmp Menu_select3
 Set_ReflowTemp2_4:
   ljmp Set_ReflowTemp2
-
+ 
 ReflowTemp_inc:
-	mov a, reflowtemp
+  mov a, reflowtemp+0
+  cjne a, #0x99, ReflowTemp_inc2
+  mov a, reflowtemp+1
+  cjne a, #0x02, ReflowTemp_inc3
+  clr a                      ;299->0
+  mov reflowtemp+1, a
+  mov reflowtemp+0, a
+  sjmp ReflowTemp_inc4
+ReflowTemp_inc2:   ;regular increment
   add a, #0x01
   da a
-  mov reflowtemp, a
+  mov reflowtemp+0, a
+  sjmp ReflowTemp_inc4
+ReflowTemp_inc3:    ;99->100, 199->200, etc
+  mov a, reflowtemp+1 
+  add a, #0x01
+  da a
+  mov reflowtemp+1, a
+  clr a
+  mov reflowtemp+0, a
+  sjmp ReflowTemp_inc4
+ReflowTemp_inc4:  ;display
   Set_Cursor(2, 1)
-  Display_BCD(reflowtemp)
+  Display_BCD(reflowtemp+1)
+  Set_Cursor(2, 3)
+  Display_BCD(reflowtemp+0)
   ljmp Set_ReflowTemp2
   
 ReflowTemp_dec:
-  mov a, reflowtemp
-	add a, #0x99
-	da a
-	mov reflowtemp, a
-	Set_Cursor(2, 1)
-	Display_BCD(reflowtemp)
-	ljmp Set_ReflowTemp2
-
+  mov a, reflowtemp+0
+  cjne a, #0x00, ReflowTemp_dec2
+  mov a, reflowtemp+1
+  cjne a, #0x00, ReflowTemp_dec3
+  mov reflowtemp+1, #0x02                 ;0->299
+  mov reflowtemp+0, #0x99
+  sjmp ReflowTemp_dec4
+ReflowTemp_dec2:   ;regular decrement
+  add a, #0x99
+  da a
+  mov reflowtemp+0, a
+  sjmp ReflowTemp_dec4
+ReflowTemp_dec3:   ;100->99, 200-> 199
+  mov a, reflowtemp+1 
+  add a, #0x99
+  da a
+  mov reflowtemp+1, a
+  mov a, #0x99
+  mov reflowtemp+0, a
+  sjmp ReflowTemp_dec4
+ReflowTemp_dec4:    ;display
+  Set_Cursor(2, 1)
+  Display_BCD(reflowtemp+1)
+  Set_Cursor(2, 3)
+  Display_BCD(reflowtemp+0)
+  ljmp Set_ReflowTemp2
 
 ; Settings - Reflow Time
 Set_ReflowTime1:
@@ -1010,5 +1092,7 @@ ReflowTime_dec:
 	mov reflowtime, a
 	Set_Cursor(2, 1)
 	Display_BCD(reflowtime)
-	ljmp Set_ReflowTime2	
-	END
+	ljmp Set_ReflowTime2
+	
+	
+END
