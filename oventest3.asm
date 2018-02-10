@@ -695,7 +695,7 @@ readingcoldjunction: ;read the cold junction from the adc
   
 	lcall Calculate_Temp_in_C 
     mov a, x
-    mov temperature, a
+    mov coldtemp, a
   
 	  pop psw
 	  pop acc
@@ -757,8 +757,6 @@ readinghotjunction: ;read the hot junction from the adc from oven and thermocoup
 	
 	lcall hex2bcd
 			
- 	Set_Cursor(2, 5)
-	Display_BCD(bcd)
   
 	lcall Calculate_hot 
     mov a, x
@@ -779,8 +777,8 @@ push acc
 	
 	Load_y(29)
 	lcall mul32
-	;Load_y(2150)
-	;lcall add32
+	Load_y(2150)
+	lcall add32
 	load_y(100)
 	lcall div32
     
