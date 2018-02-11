@@ -549,8 +549,8 @@ reflownotdone:
 
 ; reading the thermocouple junction values 
 Readingtemperatures:
- ; lcall readingcoldjunction ;answer in x is saved in variable called 'coldtemp'
-  lcall readinghotjunction
+  lcall readingcoldjunction ;answer in x is saved in variable called 'coldtemp'
+ ; lcall readinghotjunction
   
 
   mov a, x
