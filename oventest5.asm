@@ -12,11 +12,8 @@ CE_ADC EQU P2.0
 MY_MOSI EQU P2.1
 MY_MISO EQU P2.2
 MY_SCLK EQU P2.3
-<<<<<<< HEAD
 BEEPER EQU P3.7 ; placeholder pin for beeper
-=======
-BEEPER EQU P2.4 ; placeholder pin for beeper
->>>>>>> 3c3cc3a884d9231d02d64d0965b1b1ca7d621673
+
 
 SEGA equ P2.4
 SEGB equ P2.5
@@ -39,7 +36,6 @@ TIMER0_RELOAD EQU ((65536-(CLK/TIMER0_RATE)))
 TIMER2_RATE   EQU 1000     ; 1000Hz, for a timer tick of 1ms
 TIMER2_RELOAD EQU ((65536-(CLK/TIMER2_RATE)))
 
-<<<<<<< HEAD
 C4			 EQU 262
 D4      	 EQU 294
 E4			 EQU 330
@@ -86,8 +82,7 @@ C5S_reload	EQU ((65536-(CLK/(2*C5S))))
 D5F_reload	EQU ((65536-(CLK/(2*D5F))))
 E5F_reload	EQU ((65536-(CLK/(2*E5F))))
 
-=======
->>>>>>> 3c3cc3a884d9231d02d64d0965b1b1ca7d621673
+
 ; buttons
 BOOT_BUTTON   equ P4.5
 
@@ -185,11 +180,10 @@ ReflowStateMess: db 'Reflow State    ', 0
 SoakState: db 'Soak State      ', 0
 TemperatureRise: db 'Temp. Increase  ',0
 CoolingTemp: db 'Oven is cooling.',0
-<<<<<<< HEAD
+
 Tone_Message1:     db '1Surprise 2Mario', 0
 Tone_Message2:     db '   3Star Wars   ', 0
-=======
->>>>>>> 3c3cc3a884d9231d02d64d0965b1b1ca7d621673
+
 
 Blank: db '              ',0
 
@@ -220,11 +214,9 @@ Timer0_Init:
 ;---------------------------------;
 
 Timer0_ISR:
-<<<<<<< HEAD
+
 	cpl BEEPER
-=======
-;	cpl SOUND_OUT; Connect speaker to P3.7!
->>>>>>> 3c3cc3a884d9231d02d64d0965b1b1ca7d621673
+
 	reti
   
 ;---------------------------------;
@@ -452,6 +444,7 @@ MainProgram:
 	; Configure P0 in bidirectional mode
     mov P0M0, #0
     mov P0M1, #0
+    mov auxr, #00010001B
     setb EA 
     lcall LCD_4BIT
     mov soaktemp, #0
@@ -481,13 +474,9 @@ MainProgram:
    ljmp Menu_select1 ;; selecting and setting profiles
     
 FOREVER: ;this will be how the oven is being controlled ; jump here once start button is pressed!!!
-<<<<<<< HEAD
-;------state 1 -------- ;
-	lcall TonePlayer2
-	Wait_Milli_Seconds(#50)
-=======
-;------state 1 -------- ;	
->>>>>>> 3c3cc3a884d9231d02d64d0965b1b1ca7d621673
+
+	
+
    Set_Cursor(1,1)
    Send_Constant_String(#TemperatureRise)
   lcall checkstop       ;checks if stop button is pressed. If so, turns off oven and goes back to menu
@@ -497,13 +486,13 @@ FOREVER: ;this will be how the oven is being controlled ; jump here once start b
    lcall DisplayingLCD
    lcall display7seg
    
-   lcall State_change_BEEPER ; temp = soak temp, so going to soak time state 
+    ; temp = soak temp, so going to soak time state 
  
   clr c
   mov a, soaktemp
   subb a, coldtemp
   jnc FOREVER
-   
+   lcall State_change_BEEPER
   lcall TurnOvenOff
   
    clr tr2   			; restarting timer 2 to keep track of the time lasped since we reached soaktemp
@@ -568,22 +557,14 @@ increasereflowtemp:
  cooling:
  	Set_Cursor(1,1)
    Send_Constant_String(#CoolingTemp) 
-<<<<<<< HEAD
    lcall Readingtemperatures
    lcall DisplayingLCD
    lcall display7seg
    lcall waitforcooling
    lcall TonePlayer2   ;Change according to which song you want
-   lcall Open_oven_toaster_BEEPER
-=======
- lcall Readingtemperatures
-  lcall DisplayingLCD
-   lcall display7seg
- lcall waitforcooling
-; lcall Open_oven_toaster_BEEPER
->>>>>>> 3c3cc3a884d9231d02d64d0965b1b1ca7d621673
  
- ljmp $
+ 
+ ljmp Menu_select1
   
 ;---------------------------------;
 ; functions						 				    ;
@@ -707,6 +688,7 @@ checksoaktime:
   mov a, #0
   mov second, a
   setb tr2
+   lcall State_change_BEEPER
   ljmp increasereflowtemp
 soaknotdone:
 	ret 
@@ -722,6 +704,7 @@ checkreflowtime:
   mov a, #0
   mov second, a
   setb tr2
+   lcall Open_oven_toaster_BEEPER
   ljmp cooling
 reflownotdone:
 	ret
@@ -972,7 +955,6 @@ Display_Temp_Putty:
 	ret	
 ;beeper function to indicate reflow process has started
 Reflow_start_BEEPER:
-<<<<<<< HEAD
  lcall ToneReset
  setb tr0
  cpl tr0
@@ -990,43 +972,17 @@ State_change_BEEPER:
  ret
  
 Open_oven_toaster_BEEPER:
- lcall ToneReset
-=======
- setb BEEPER
- cpl BEEPER
- Wait_Milli_Seconds(#250)
- Wait_Milli_Seconds(#250)
- clr BEEPER
- ret
- 
-State_change_BEEPER:
- setb BEEPER
- cpl BEEPER
- Wait_Milli_Seconds(#250)
- Wait_Milli_Seconds(#250)
- clr BEEPER
- ret
- 
-Open_toaster_oven_BEEPER:
->>>>>>> 3c3cc3a884d9231d02d64d0965b1b1ca7d621673
- clr a ; c=0
-loop6times: 
- cjne a, #6, beep
- ret
- beep: 
-<<<<<<< HEAD
+  lcall ToneReset
  setb tr0
- cpl tr0
- Wait_Milli_Seconds(#100)
+ Wait_Milli_Seconds(#250)
+ Wait_Milli_Seconds(#250)
+ Wait_Milli_Seconds(#250)
+ Wait_Milli_Seconds(#250)
+ Wait_Milli_Seconds(#250)
+ Wait_Milli_Seconds(#250)
+
+
  clr tr0
-=======
- setb BEEPER
- cpl BEEPER
- Wait_Milli_Seconds(#100)
- clr BEEPER
->>>>>>> 3c3cc3a884d9231d02d64d0965b1b1ca7d621673
- inc a 
- sjmp loop6times
  ret
 ; Display Temperature in LCD
 Display_Temp_LCD:
@@ -1078,7 +1034,8 @@ Jump_To_FOREVER1:
   lcall Timer2_init
 	
 	mov second, #0
-	
+ lcall TonePlayer2
+	Wait_Milli_Seconds(#50)
 	ljmp FOREVER
 
 Jump_to_Set_SoakTemp1:
@@ -1399,7 +1356,6 @@ ReflowTime_dec:
  lcall display_reflow_time
  ljmp Set_Reflowtime2
 
-<<<<<<< HEAD
 
 ;--------------------;
 ; Bonus - Song stuff ;
@@ -1752,8 +1708,4 @@ TonePlayOneandHalfSec:
 	ret	
 	
 
-=======
-	
-	
->>>>>>> 3c3cc3a884d9231d02d64d0965b1b1ca7d621673
 END
