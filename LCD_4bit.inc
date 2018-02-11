@@ -235,4 +235,57 @@ endmac
 	lcall putchar
 	pop acc
 	ret
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+ToneSetH mac
+	push ar0
+	mov r0, %0
+	lcall ?ToneSetH
+	pop ar0
+endmac
+
+?ToneSetH:
+	mov TH0, R0
+	mov TIMER0_RELOAD_H, R0
+    ret
+
+ToneSetL mac
+	push ar0
+	mov r0, %0
+	lcall ?ToneSetL
+	pop ar0
+endmac
+
+?ToneSetL:
+	mov TH0, R0
+	mov TIMER0_RELOAD_L, R0
+    ret
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+Delay_PercentSec mac
+	push AR2
+	mov R2, %0
+	lcall ?Delay_PercentSec
+	pop AR2
+endmac
+
+?Delay_PercentSec:
+	push AR0
+	push AR1
+	push AR3
+
+L4U: mov R3, #89
+L3U: mov R1, #(250/4) ; to make half sec -> 1/8 sec
+L2U: mov R0, #(166/4*3)
+L1U: djnz R0, L1U ; 4 cycles->4*45.21123ns*(166/4*3)=22.51519us
+    djnz R1, L2U ; 22.51519us*250/4=5.629ms/4
+    djnz R3, L3U ; 5.629ms*89=0.5/4s (approximately) = 0.125s
+    djnz R2, L4U ; multiply by given value
+    
+    pop AR3
+    pop AR1
+    pop AR0
+    ret
+
+
 END
