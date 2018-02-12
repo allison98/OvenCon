@@ -20,7 +20,7 @@ except:
  ser = serial.Serial(portlist[0][0], 115200, timeout=100)
 ser.isOpen()
 
-xsize = 30
+xsize = 600
 
 def data_gen():
     # I know we have to change this so that it plots my temperatures
@@ -64,9 +64,16 @@ def on_close_figure(event):
     sys.exit(0)
 
 #main
+out_str1 = ""
 strin1 = ser.readline();
-strin1 = strin1[-1]
-data_for_colour = int(strin1)
+strin1 = strin1.decode('ascii')
+if strin1[5] != ' ':
+    out_str1 += str(strin1[5])
+if strin1[6] != ' ':
+    out_str1 += str(strin1[6])
+
+data_for_colour = int(out_str1)
+
 # graph is blue by default
 graph = 'blue'
 if data_for_colour == 1:
@@ -86,7 +93,7 @@ fig.canvas.mpl_connect('close_event', on_close_figure)
 ax = fig.add_subplot(111)
 #sets the colour of the graph
 line, = ax.plot([], [], lw=2, color=graph)
-ax.set_ylim(-10, 245)
+ax.set_ylim(-10, 400)
 ax.set_xlim(0, xsize)
 ax.grid()
 xdata, ydata = [], []
