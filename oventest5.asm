@@ -764,23 +764,27 @@ DisplayingLCD:
 
  
     
-	mov bcd, second
+	mov x, second
+	lcall hex2bcd
 	Set_Cursor(2,1)
 	Display_BCD(bcd+1)
 	Set_Cursor(2,3)
 	Display_BCD(bcd)
 	
-	Set_Cursor(2, 12)
+	
 	mov x, coldtemp	
 	lcall hex2bcd	
+	Set_Cursor(2, 10)
+    Display_BCD(bcd+1)
+    Set_Cursor(2, 12)
 	Display_BCD(bcd)
-
-    Set_Cursor(2, 10)
-    Display_BCD(bcd+1)			
+   
+    			
 	Set_Cursor(2,15)
     WriteData(#0xDF)
     Set_Cursor(2,16)
     WriteData(#'C')
+    
     ret
     
     
