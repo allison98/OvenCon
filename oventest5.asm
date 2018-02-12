@@ -559,9 +559,18 @@ increasereflowtemp:
  	Set_Cursor(1,1)
    Send_Constant_String(#CoolingTemp) 
    lcall Readingtemperatures
-   lcall DisplayingLCD_wotime
+  ; lcall DisplayingLCD_wotime
+  
    lcall display7seg
-   
+   set_cursor(2,1)
+   send_constant_string(#blank)
+   	mov x, coldtemp	
+	lcall hex2bcd	
+	Set_Cursor(2, 10)
+    Display_BCD(bcd+1)
+    Set_Cursor(2, 12)
+	Display_BCD(bcd)
+    
    
   clr c
   mov a, #60
@@ -787,7 +796,8 @@ DisplayingLCD:
     
     
 DisplayingLCD_wotime:
-   	
+set_cursor(2,1)
+   	Send_Constant_string(#blank)
 	mov x, coldtemp	
 	lcall hex2bcd	
 	Set_Cursor(2, 10)
