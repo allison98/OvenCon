@@ -20,7 +20,7 @@ except:
  ser = serial.Serial(portlist[0][0], 115200, timeout=100)
 ser.isOpen()
 
-xsize = 30
+xsize = 250
 
 def data_gen():
     # I know we have to change this so that it plots my temperatures
@@ -71,7 +71,7 @@ fig.canvas.mpl_connect('close_event', on_close_figure)
 ax = fig.add_subplot(111)
 #sets the colour of the graph
 line, = ax.plot([], [], lw=2, color=graph)
-ax.set_ylim(-10, 250)
+ax.set_ylim(-1, 250)
 ax.set_xlim(0, xsize)
 ax.grid()
 xdata, ydata = [], []
