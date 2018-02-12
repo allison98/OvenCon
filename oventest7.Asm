@@ -515,7 +515,7 @@ FOREVER: ;this will be how the oven is being controlled ; jump here once start b
    lcall checkerror      ;if error, terminate program and return
    lcall Readingtemperatures  ;calculates temperature of oven using thermocouple junctions
    
-   lcall DisplayingLCD
+   lcall DisplayingLCD_WOTIME
    lcall display7seg
    
     ; temp = soak temp, so going to soak time state 
@@ -555,7 +555,7 @@ increasereflowtemp:
   	Set_Cursor(1,1)
    Send_Constant_String(#TemperatureRise) 
   lcall Readingtemperatures
-   lcall DisplayingLCD
+   lcall DisplayingLCD_WOTIME
     lcall display7seg
   
   clr c
@@ -590,9 +590,29 @@ increasereflowtemp:
  	Set_Cursor(1,1)
    Send_Constant_String(#CoolingTemp) 
    lcall Readingtemperatures
-   lcall DisplayingLCD
+  ; lcall DisplayingLCD_wotime
+  
    lcall display7seg
-   lcall waitforcooling
+   set_cursor(2,1)
+   send_constant_string(#blank)
+   	mov x, coldtemp	
+	lcall hex2bcd	
+	Set_Cursor(2, 10)
+    Display_BCD(bcd+1)
+    Set_Cursor(2, 12)
+	Display_BCD(bcd)
+    
+   
+  clr c
+  mov a, #60
+  subb a, coldtemp
+  jnc cooled
+  ljmp cooling
+  
+   
+   
+;   lcall waitforcooling
+  cooled: 
    lcall SMEndSongPlay
  
  
@@ -619,7 +639,7 @@ waitforcooling:
 ;  ljmp cooling
   
  
-cooled:
+;cooled:
 	ret
 
 ; *********** STATE 2 **********
@@ -802,6 +822,8 @@ DisplayingLCD:
     Set_Cursor(2, 12)
 	Display_BCD(bcd)
    
+    
+    lcall display_temp_putty
     			
 	Set_Cursor(2,15)
     WriteData(#0xDF)
@@ -811,6 +833,26 @@ DisplayingLCD:
     ret
     
     
+   
+    
+DisplayingLCD_wotime:
+set_cursor(2,1)
+   	Send_Constant_string(#blank)
+	mov x, coldtemp	
+	lcall hex2bcd	
+	Set_Cursor(2, 10)
+    Display_BCD(bcd+1)
+    Set_Cursor(2, 12)
+	Display_BCD(bcd)
+    
+    lcall display_temp_putty
+    			
+	Set_Cursor(2,15)
+    WriteData(#0xDF)
+    Set_Cursor(2,16)
+    WriteData(#'C')
+    
+    ret
 
 
 
