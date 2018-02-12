@@ -287,9 +287,9 @@ state_done:
   Inc_Done:
 	; Check if half second has passed
 	mov a, Count1ms+0
-	cjne a, #low(1000), Timer2_ISR_done ; Warning: this instruction changes the carry flag!
+	cjne a, #low(500), Timer2_ISR_done ; Warning: this instruction changes the carry flag!
 	mov a, Count1ms+1
-	cjne a, #high(1000), Timer2_ISR_done
+	cjne a, #high(500), Timer2_ISR_done
 	
     ; cpl TR0 ; Enable/disable timer/counter 0. This line creates a beep-silence-beep-silence sound.
     ; where is halfsecondflag?					
@@ -302,7 +302,8 @@ state_done:
 
 	add a, #0x01 ;THIS IS ADDING SECONDS
 
-	da a ; Decimal adjust instruction.  Check datasheet for more details!
+test2:
+;	da a ; Decimal adjust instruction.  Check datasheet for more details!
 	mov second, a
 	
 Timer2_ISR_done:
@@ -455,6 +456,7 @@ MainProgram:
     mov reflowtime, #0x0
 
     mov second, #0
+   
    ; mov countererror, #0	; to check if the thermocouple is in the oven
 		
     ;initial message 
@@ -478,7 +480,7 @@ FOREVER: ;this will be how the oven is being controlled ; jump here once start b
 
    Set_Cursor(1,1)
    Send_Constant_String(#TemperatureRise)
-  lcall checkstop       ;checks if stop button is pressed. If so, turns off oven and goes back to menu
+ lcall checkstop       ;checks if stop button is pressed. If so, turns off oven and goes back to menu
    lcall checkerror      ;if error, terminate program and return
    lcall Readingtemperatures  ;calculates temperature of oven using thermocouple junctions
    
@@ -560,6 +562,7 @@ increasereflowtemp:
    lcall DisplayingLCD
    lcall display7seg
    lcall waitforcooling
+   
    lcall TonePlayer2   ;Change according to which song you want
  
  
@@ -595,7 +598,7 @@ cooled:
 
 keepingsoaktempsame:
   mov a, soaktemp
-  add a, #5
+  add a, #1
   mov x, a
    
   clr c
@@ -615,7 +618,7 @@ keepingsoaktempsame:
  ; lcall sub32	
   mov a, soaktemp
   clr c
-  subb a, #5
+  subb a, #1
   mov x, a
   
   clr c
@@ -639,7 +642,7 @@ soaktemptoolow:
   
  keepingreflowtempsame:
   mov a, reflowtemp
-  add a, #5
+  add a, #1
   mov x, a
    
   clr c
@@ -659,7 +662,7 @@ soaktemptoolow:
  ; lcall sub32	
   mov a, reflowtemp
   clr c
-  subb a, #5
+  subb a, #1
   mov x, a
   
   clr c
@@ -667,17 +670,9 @@ soaktemptoolow:
   subb a, x
   jnc soaktempisokay
   ljmp soaktemptoolow
-  
- ; lower bound for the straight line for the soak temp: soaktemp-10
-;  load_Y(coldtemp)
- ; lcall x_gteq_y   ; compare if temp <= soaktemp - 10 
- ; jb mf, soaktemptoolow; if mf!=1 then keep checking
- ; ljmp soaktempisokay
-  
+
 
 checksoaktime:
-
- 
   clr c
   mov a, soaktime
   subb a, second
@@ -693,7 +688,6 @@ soaknotdone:
 	ret 
   
 checkreflowtime:
-
   clr c
   mov a, reflowtime
   subb a, second
@@ -703,8 +697,9 @@ checkreflowtime:
   mov a, #0
   mov second, a
   setb tr2
-   lcall Open_oven_toaster_BEEPER
+  lcall Open_oven_toaster_BEEPER
   ljmp cooling
+  
 reflownotdone:
 	ret
 
@@ -761,9 +756,7 @@ TurnOvenOn:
   ret
 
 DisplayingLCD:
-
- 
-    
+   
 	mov x, second
 	lcall hex2bcd
 	Set_Cursor(2,1)
@@ -1027,7 +1020,7 @@ Jump_To_FOREVER1:
   lcall Timer2_init
 	
 	mov second, #0
- ;lcall TonePlayer2
+ lcall TonePlayer2
 	Wait_Milli_Seconds(#50)
 	ljmp FOREVER
 
