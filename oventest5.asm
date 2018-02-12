@@ -154,7 +154,7 @@ StartButton equ P0.3
 BUTTON_1 equ P0.4
 BUTTON_2 equ P0.5
 BUTTON_3 equ P0.6
-OvenButton equ P3.6
+OvenButton equ P1.0
 
 
 $NOLIST
@@ -446,13 +446,13 @@ MainProgram:
     mov auxr, #00010001B
     setb EA 
     lcall LCD_4BIT
-    mov soaktemp, #0x80
+    mov soaktemp, #0x0
     
-    mov soaktime, #0x80
+    mov soaktime, #0x0
 
-    mov reflowtemp, #0x80
+    mov reflowtemp, #0x0
    
-    mov reflowtime, #0x80
+    mov reflowtime, #0x0
 
     mov second, #0
    ; mov countererror, #0	; to check if the thermocouple is in the oven
@@ -518,7 +518,7 @@ soaktempchecked:
   
 ; ---- state 3 ---- ; increaseing to reflow temp
 increasereflowtemp: 
- ; lcall checkstop
+  lcall checkstop
   	Set_Cursor(1,1)
    Send_Constant_String(#TemperatureRise) 
   lcall Readingtemperatures
@@ -532,7 +532,7 @@ increasereflowtemp:
    
   lcall TurnOvenOff  
    
- ; lcall checkingreflowtemp
+
   lcall State_change_BEEPER
   clr tr2
   mov a, #0
@@ -724,13 +724,6 @@ Readingtemperatures:
 ; checking if the temperture at the hot end is equal to soak temp yet
 
 
-;checkingsoaktemperature: 
-;  clr c
- ; mov a, soaktemp
- ; subb a, coldtemp
- ; jnc Jump_to_FOREVER  
- ; lcall TurnOvenOff
- ; ret
 Jump_to_FOREVER:
 	ljmp FOREVER
 
@@ -769,10 +762,7 @@ TurnOvenOn:
 
 DisplayingLCD:
 
- 	Set_Cursor(2,15)
-    WriteData(#0xDF)
-    Set_Cursor(2,16)
-    WriteData(#'C')
+ 
     
 	mov bcd, second
 	Set_Cursor(2,1)
@@ -787,7 +777,10 @@ DisplayingLCD:
 
     Set_Cursor(2, 10)
     Display_BCD(bcd+1)			
-
+	Set_Cursor(2,15)
+    WriteData(#0xDF)
+    Set_Cursor(2,16)
+    WriteData(#'C')
     ret
     
     
@@ -806,7 +799,7 @@ checkerror:
   jnc noerror
 
   
-  mov a, #0x50
+  mov a, #50
   subb a, coldtemp
   jnc error
   sjmp noerror
