@@ -211,12 +211,11 @@ Timer0_Init:
 ; ISR for timer 0.  Set to execute;
 ; every 1/4096Hz to generate a    ;
 ; 2048 Hz square wave at pin P3.7 ;
+; Used for the state change beeps ;
 ;---------------------------------;
 
 Timer0_ISR:
-
 	cpl BEEPER
-
 	reti
   
 ;---------------------------------;
@@ -447,13 +446,13 @@ MainProgram:
     mov auxr, #00010001B
     setb EA 
     lcall LCD_4BIT
-    mov soaktemp, #0
+    mov soaktemp, #0x80
     
-    mov soaktime, #0
+    mov soaktime, #0x80
 
-    mov reflowtemp, #0
+    mov reflowtemp, #0x80
    
-    mov reflowtime, #0
+    mov reflowtime, #0x80
 
     mov second, #0
    ; mov countererror, #0	; to check if the thermocouple is in the oven
@@ -524,8 +523,8 @@ increasereflowtemp:
    Send_Constant_String(#TemperatureRise) 
   lcall Readingtemperatures
    lcall DisplayingLCD
-   
-
+    lcall display7seg
+  
   clr c
   mov a, reflowtemp
   subb a, coldtemp
@@ -711,8 +710,8 @@ reflownotdone:
 
 ; reading the thermocouple junction values 
 Readingtemperatures:
-  lcall readingcoldjunction ;answer in x is saved in variable called 'coldtemp'
- ; lcall readinghotjunction
+  ;lcall readingcoldjunction ;answer in x is saved in variable called 'coldtemp'
+  lcall readinghotjunction
   
 
   mov a, x
@@ -787,10 +786,7 @@ DisplayingLCD:
 	Display_BCD(bcd)
 
     Set_Cursor(2, 10)
-    Display_BCD(bcd+1)	
-
-
-		
+    Display_BCD(bcd+1)			
 
     ret
     
@@ -1034,7 +1030,7 @@ Jump_To_FOREVER1:
   lcall Timer2_init
 	
 	mov second, #0
- lcall TonePlayer2
+ ;lcall TonePlayer2
 	Wait_Milli_Seconds(#50)
 	ljmp FOREVER
 
