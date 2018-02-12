@@ -12,7 +12,7 @@ CE_ADC EQU P2.0
 MY_MOSI EQU P2.1
 MY_MISO EQU P2.2
 MY_SCLK EQU P2.3
-BEEPER EQU P2.4 ; placeholder pin for beeper
+BEEPER EQU P3.7 ; placeholder pin for beeper
 
 TIMER0_RELOAD_L DATA 0xf2
 TIMER1_RELOAD_L DATA 0xf3
@@ -23,6 +23,53 @@ TIMER0_RATE   EQU 4096             ; 2048Hz squarewave (peak amplitude of CEM-12
 TIMER0_RELOAD EQU ((65536-(CLK/TIMER0_RATE)))
 TIMER2_RATE   EQU 1000     ; 1000Hz, for a timer tick of 1ms
 TIMER2_RELOAD EQU ((65536-(CLK/TIMER2_RATE)))
+
+C4			 EQU 262
+D4      	 EQU 294
+E4			 EQU 330
+F4		 	 EQU 349
+G4			 EQU 392
+A4			 EQU 440
+B4     	  	 EQU 494
+
+C5			 EQU 523
+D5      	 EQU 587
+E5			 EQU 659
+F5		 	 EQU 698
+G5			 EQU 784
+A5			 EQU 880
+B5     	  	 EQU 988
+
+G4F			 EQU 370
+A4F			 EQU 415
+B4F			 EQU 466
+C5S			 EQU 554
+D5F			 EQU 554
+E5F			 EQU 622
+
+C4_reload	EQU ((65536-(CLK/(2*C4))))
+D4_reload   EQU ((65536-(CLK/(2*D4))))
+E4_reload	EQU ((65536-(CLK/(2*E4))))
+F4_reload	EQU ((65536-(CLK/(2*F4))))
+G4_reload	EQU ((65536-(CLK/(2*G4))))
+A4_reload	EQU ((65536-(CLK/(2*A4))))
+B4_reload	EQU ((65536-(CLK/(2*B4))))
+
+C5_reload	EQU ((65536-(CLK/(2*C5))))
+D5_reload   EQU ((65536-(CLK/(2*D5))))
+E5_reload	EQU ((65536-(CLK/(2*E5))))
+F5_reload	EQU ((65536-(CLK/(2*F5))))
+G5_reload	EQU ((65536-(CLK/(2*G5))))
+A5_reload	EQU ((65536-(CLK/(2*A5))))
+B5_reload	EQU ((65536-(CLK/(2*B5))))
+
+G4F_reload	EQU ((65536-(CLK/(2*G4F))))
+A4F_reload	EQU ((65536-(CLK/(2*A4F))))
+B4F_reload	EQU ((65536-(CLK/(2*B4F))))
+C5S_reload	EQU ((65536-(CLK/(2*C5S))))
+D5F_reload	EQU ((65536-(CLK/(2*D5F))))
+E5F_reload	EQU ((65536-(CLK/(2*E5F))))
+
 
 ; buttons
 BOOT_BUTTON   equ P4.5
@@ -71,6 +118,8 @@ second: ds 1
 minute: ds 1
 temp: ds 1
 count: ds 1
+statemarker: ds 1 ; Marks current state (before change)/Used for different songs in timer 0 (and maybe displaying state on matlab graph)
+                  ; 1:RampToSoak 2:Soak 3:RampToPeak 4:Reflow 5:Cooling
 
 BSEG
 startflag: dbit 1
@@ -117,6 +166,8 @@ ReflowStateMess: db 'Reflow State', 0
 SoakState: db 'Soak State', 0
 TemperatureRise: db 'Temp. Increase',0
 CoolingTemp: db 'Oven is cooling.',0
+Tone_Message1:     db '1Surprise 2Mario', 0
+Tone_Message2:     db '   3Star Wars   ', 0
 
 Blank: db '              ',0
 
@@ -147,7 +198,7 @@ Timer0_Init:
 ;---------------------------------;
 
 Timer0_ISR:
-;	cpl SOUND_OUT; Connect speaker to P3.7!
+	cpl BEEPER
 	reti
   
 ;---------------------------------;
@@ -310,6 +361,8 @@ MainProgram:
     mov reflowtime, #0x00
 
     mov second, #0
+    
+    mov statemarker, #0x02
    ; mov countererror, #0	; to check if the thermocouple is in the oven
 		
     ;initial message 
@@ -329,6 +382,8 @@ MainProgram:
     
 FOREVER: ;this will be how the oven is being controlled ; jump here once start button is pressed!!!
 ;------state 1 -------- ;	
+	lcall TonePlayer2
+	Wait_Milli_Seconds(#50)
    Set_Cursor(1,1)
    Send_Constant_String(#TemperatureRise)
   lcall checkstop       ;checks if stop button is pressed. If so, turns off oven and goes back to menu
@@ -337,7 +392,7 @@ FOREVER: ;this will be how the oven is being controlled ; jump here once start b
    lcall DisplayingLCD
 
    
-   lcall State_change_BEEPER ; temp = soak temp, so going to soak time state 
+   ;lcall State_change_BEEPER ; temp = soak temp, so going to soak time state 
   
  
   clr c
@@ -435,6 +490,7 @@ waitforcooling:
   
  
 cooled:
+	lcall TonePlayer3
 	ret
 
 ; *********** STATE 2 **********
@@ -794,31 +850,33 @@ Display_Temp_Putty:
 	ret	
 ;beeper function to indicate reflow process has started
 Reflow_start_BEEPER:
- setb BEEPER
- cpl BEEPER
+ lcall ToneReset
+ setb tr0
+ cpl tr0
  Wait_Milli_Seconds(#250)
  Wait_Milli_Seconds(#250)
- clr BEEPER
+ clr tr0
  ret
  
 State_change_BEEPER:
- setb BEEPER
- cpl BEEPER
+ lcall ToneReset
+ setb tr0
  Wait_Milli_Seconds(#250)
  Wait_Milli_Seconds(#250)
- clr BEEPER
+ clr tr0
  ret
  
 Open_toaster_oven_BEEPER:
+ lcall ToneReset
  clr a ; c=0
 loop6times: 
  cjne a, #6, beep
  ret
  beep: 
- setb BEEPER
- cpl BEEPER
+ setb tr0
+ cpl tr0
  Wait_Milli_Seconds(#100)
- clr BEEPER
+ clr tr0
  inc a 
  sjmp loop6times
  ret
@@ -1185,6 +1243,355 @@ ReflowTime_dec:
  lcall display_reflow_time
  ljmp Set_Reflowtime2
 
+;--------------------;
+; Bonus - Song stuff ;
+;--------------------;
+;;;These aren't used in this program (for now at least)
+Tone1:
+	WriteCommand(#0x01)
+	Wait_Milli_Seconds(#50)
+	Set_Cursor(1, 1)
+    Send_Constant_String(#Tone_Message1)
+	Set_Cursor(2, 1)
+    Send_Constant_String(#Tone_Message2)
+
+Tone2:
+	jb BUTTON_1, Tone2_2
+	jnb BUTTON_1, $
+	ljmp TonePlayer1
+Tone2_2:
+	jb BUTTON_2, Tone2_3
+	jnb BUTTON_2, $
+	ljmp TonePlayer2
+Tone2_3:
+	jb BUTTON_3, Tone2
+	jnb BUTTON_3, $
+	ljmp TonePlayer3
 	
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+ToneC4:
+	ToneSetH(#high(C4_reload))
+	ToneSetL(#low(C4_reload))
+	ret
+
+ToneD4:
+	ToneSetH(#high(D4_reload))
+	ToneSetL(#low(D4_reload))
+	ret
+
+ToneE4:
+	ToneSetH(#high(E4_reload))
+	ToneSetL(#low(E4_reload))
+	ret
+
+ToneF4:
+	ToneSetH(#high(F4_reload))
+	ToneSetL(#low(F4_reload))
+	ret
+
+ToneG4:
+	ToneSetH(#high(G4_reload))
+	ToneSetL(#low(G4_reload))
+	ret
+		
+ToneA4:
+	ToneSetH(#high(A4_reload))
+	ToneSetL(#low(A4_reload))
+	ret
 	
+ToneB4:
+	ToneSetH(#high(B4_reload))
+	ToneSetL(#low(B4_reload))
+	ret
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+ToneC5:
+	ToneSetH(#high(C5_reload))
+	ToneSetL(#low(C5_reload))
+	ret
+
+ToneD5:
+	ToneSetH(#high(D5_reload))
+	ToneSetL(#low(D5_reload))
+	ret
+	
+ToneE5:
+	ToneSetH(#high(E5_reload))
+	ToneSetL(#low(E5_reload))
+	ret
+	
+ToneF5:
+	ToneSetH(#high(F5_reload))
+	ToneSetL(#low(F5_reload))
+	ret
+	
+ToneG5:
+	ToneSetH(#high(G5_reload))
+	ToneSetL(#low(G5_reload))
+	ret
+	
+ToneA5:
+	ToneSetH(#high(A5_reload))
+	ToneSetL(#low(A5_reload))
+	ret
+	
+ToneB5:
+	ToneSetH(#high(B5_reload))
+	ToneSetL(#low(B5_reload))
+	ret
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+ToneG4F:
+	ToneSetH(#high(G4F_reload))
+	ToneSetL(#low(G4F_reload))
+	ret
+	
+ToneA4F:
+	ToneSetH(#high(A4F_reload))
+	ToneSetL(#low(A4F_reload))
+	ret
+
+ToneB4F:
+	ToneSetH(#high(B4F_reload))
+	ToneSetL(#low(B4F_reload))
+	ret
+	
+ToneC5S:
+	ToneSetH(#high(C5S_reload))
+	ToneSetL(#low(C5S_reload))
+	ret
+
+ToneD5F:
+	ToneSetH(#high(D5F_reload))
+	ToneSetL(#low(D5F_reload))
+	ret
+	
+ToneE5F:
+	ToneSetH(#high(E5F_reload))
+	ToneSetL(#low(E5F_reload))
+	ret
+
+ToneReset:
+	ToneSetH(#high(TIMER0_RELOAD))
+	ToneSetL(#low(TIMER0_RELOAD))
+	ret
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+TonePlayer1: ;Never Gonna Give You Up
+	lcall ToneA4F              ;Nev
+	lcall TonePlayEighthSec
+	
+	lcall ToneB4F               ;er
+	lcall TonePlayEighthSec
+	
+	lcall ToneD5F               ;gon
+	lcall TonePlayEighthSec
+	
+	lcall ToneB4F                 ;na
+	lcall TonePlayEighthSec
+	
+	lcall ToneF5                     ;give
+	lcall TonePlayThreeEighthSec
+	
+	lcall ToneF5                    ;you
+	lcall TonePlayThreeEighthSec
+	
+	lcall ToneE5F                   ;up
+	lcall TonePlayThreeEighthSec   
+	
+	Wait_Milli_Seconds(#80)
+	
+	lcall ToneA4F                ;Nev
+	lcall TonePlayEighthSec
+	
+	lcall ToneB4F                 ;er
+	lcall TonePlayEighthSec
+	
+	lcall ToneC5                   ;gon
+	lcall TonePlayEighthSec
+	
+	lcall ToneA4F                  ;na
+	lcall TonePlayEighthSec
+	
+	lcall ToneE5F                    ;let
+	lcall TonePlayThreeEighthSec
+	
+	lcall ToneE5F                   ;you
+	lcall TonePlayThreeEighthSec
+	
+	lcall ToneD5F                  ;down
+	lcall TonePlayThreeEighthSec
+	
+	Wait_Milli_Seconds(#80)
+		
+	lcall ToneA4F              ;Nev
+	lcall TonePlayEighthSec
+	
+	lcall ToneB4F                ;er
+	lcall TonePlayEighthSec
+	
+	lcall ToneD5F                   ;gon
+	lcall TonePlayEighthSec
+	
+	lcall ToneB4F                   ;na
+	lcall TonePlayEighthSec
+
+	lcall ToneD5F                 ;run
+	lcall TonePlayQuarterSec
+	
+	lcall ToneE5F                  ;a
+	lcall TonePlayThreeEighthSec
+	
+	lcall ToneC5                   ;round
+	lcall TonePlayThreeEighthSec
+	
+	;lcall ToneB4F
+	;lcall TonePlayEighthSec
+	
+	lcall ToneA4F                ;and
+	lcall TonePlayQuarterSec	
+	
+	lcall ToneA4F                ;de
+	lcall TonePlayEighthSec
+	
+	lcall ToneE5F                  ;sert
+	lcall TonePlayThreeEighthSec
+	
+	lcall ToneD5F             ;you
+	lcall TonePlayThreeEighthSec
+	
+	ret
+
+TonePlayer2: ;Mario
+	lcall ToneE5
+	lcall TonePlayQuarterSec
+	
+	lcall ToneE5
+	lcall TonePlayQuarterSec
+	
+	Wait_Milli_Seconds(#80)
+		
+	lcall ToneE5
+	lcall TonePlayThreeEighthSec
+
+	Wait_Milli_Seconds(#80)
+		
+	lcall ToneC5
+	lcall TonePlayQuarterSec
+	
+	lcall ToneE5
+	lcall TonePlayQuarterSec
+	
+	Wait_Milli_Seconds(#80)
+	
+	lcall ToneG5
+	lcall TonePlayThreeEighthSec
+	
+	Wait_Milli_Seconds(#80)
+	Wait_Milli_Seconds(#80)
+	Wait_Milli_Seconds(#80)
+	Wait_Milli_Seconds(#80)
+	
+	lcall ToneG4
+	lcall TonePlayHalfSec
+	
+	ret
+
+TonePlayer3: ;Star Wars
+	lcall ToneC4
+	lcall TonePlayHalfSec
+	
+	lcall ToneG4
+	lcall TonePlayHalfSec
+	
+	lcall ToneF4
+	lcall TonePlayQuarterSec
+	
+	lcall ToneE4
+	lcall TonePlayThreeEighthSec
+	
+	lcall ToneD4
+	lcall TonePlayThreeEighthSec
+	
+	lcall ToneC5
+	lcall TonePlayHalfSec
+		
+	lcall ToneG4
+	lcall TonePlayQuarterSec
+	
+	Wait_Milli_Seconds(#80)
+		
+	lcall ToneF4
+	lcall TonePlayQuarterSec
+	
+	lcall ToneE4
+	lcall TonePlayQuarterSec
+	
+	lcall ToneD4
+	lcall TonePlayQuarterSec
+	
+	lcall ToneC5
+	lcall TonePlayHalfSec
+	
+	lcall ToneG4
+	lcall TonePlayQuarterSec
+	
+	Wait_Milli_Seconds(#80)
+		
+	lcall ToneF4
+	lcall TonePlayQuarterSec
+	
+	lcall ToneE4
+	lcall TonePlayQuarterSec
+	
+	lcall ToneF4
+	lcall TonePlayQuarterSec
+	
+	lcall ToneD4
+	lcall TonePlayHalfSec
+	
+	ret
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+TonePlayEighthSec:
+	setb TR0
+	Delay_PercentSec(#0x1)   ; 1*(1/8) = 1/8 sec
+	clr TR0
+	Wait_Milli_Seconds(#80)
+	ret
+
+TonePlayQuarterSec:
+	setb TR0
+	Delay_PercentSec(#0x2)   ; 2*(1/8) = 1/4 sec
+	clr TR0
+	Wait_Milli_Seconds(#80)
+	ret
+
+TonePlayThreeEighthSec:
+	setb TR0
+	Delay_PercentSec(#0x3)   ; 3*(1/8) = 3/8 sec
+	clr TR0
+	Wait_Milli_Seconds(#80)
+	ret
+
+TonePlayHalfSec:
+	setb TR0
+	Delay_PercentSec(#0x4)   ; 4*(1/8) = 1/2 sec
+	clr TR0
+	Wait_Milli_Seconds(#80)
+	ret
+
+TonePlayOneSec:
+	setb TR0
+	Delay_PercentSec(#0x8)   ; 8*(1/8) = 1 sec
+	clr TR0
+	Wait_Milli_Seconds(#80)
+	ret
+
+TonePlayOneandHalfSec:
+	setb TR0
+	Delay_PercentSec(#0x12)   ; 12*(1/8) = 1.5 sec
+	clr TR0
+	Wait_Milli_Seconds(#80)
+	ret	
+
+
 END

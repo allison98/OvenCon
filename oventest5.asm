@@ -12,7 +12,19 @@ CE_ADC EQU P2.0
 MY_MOSI EQU P2.1
 MY_MISO EQU P2.2
 MY_SCLK EQU P2.3
-BEEPER EQU P2.4 ; placeholder pin for beeper
+BEEPER EQU P3.7 ; placeholder pin for beeper
+
+
+SEGA equ P2.4
+SEGB equ P2.5
+SEGC equ P2.6
+SEGD equ P2.7
+SEGE equ P4.5
+SEGF equ P4.4
+SEGG equ P0.7
+CA1  equ P0.1
+CA2  equ P0.2
+CA3  equ P0.0
 
 TIMER0_RELOAD_L DATA 0xf2
 TIMER1_RELOAD_L DATA 0xf3
@@ -23,6 +35,53 @@ TIMER0_RATE   EQU 4096             ; 2048Hz squarewave (peak amplitude of CEM-12
 TIMER0_RELOAD EQU ((65536-(CLK/TIMER0_RATE)))
 TIMER2_RATE   EQU 1000     ; 1000Hz, for a timer tick of 1ms
 TIMER2_RELOAD EQU ((65536-(CLK/TIMER2_RATE)))
+
+C4			 EQU 262
+D4      	 EQU 294
+E4			 EQU 330
+F4		 	 EQU 349
+G4			 EQU 392
+A4			 EQU 440
+B4     	  	 EQU 494
+
+C5			 EQU 523
+D5      	 EQU 587
+E5			 EQU 659
+F5		 	 EQU 698
+G5			 EQU 784
+A5			 EQU 880
+B5     	  	 EQU 988
+
+G4F			 EQU 370
+A4F			 EQU 415
+B4F			 EQU 466
+C5S			 EQU 554
+D5F			 EQU 554
+E5F			 EQU 622
+
+C4_reload	EQU ((65536-(CLK/(2*C4))))
+D4_reload   EQU ((65536-(CLK/(2*D4))))
+E4_reload	EQU ((65536-(CLK/(2*E4))))
+F4_reload	EQU ((65536-(CLK/(2*F4))))
+G4_reload	EQU ((65536-(CLK/(2*G4))))
+A4_reload	EQU ((65536-(CLK/(2*A4))))
+B4_reload	EQU ((65536-(CLK/(2*B4))))
+
+C5_reload	EQU ((65536-(CLK/(2*C5))))
+D5_reload   EQU ((65536-(CLK/(2*D5))))
+E5_reload	EQU ((65536-(CLK/(2*E5))))
+F5_reload	EQU ((65536-(CLK/(2*F5))))
+G5_reload	EQU ((65536-(CLK/(2*G5))))
+A5_reload	EQU ((65536-(CLK/(2*A5))))
+B5_reload	EQU ((65536-(CLK/(2*B5))))
+
+G4F_reload	EQU ((65536-(CLK/(2*G4F))))
+A4F_reload	EQU ((65536-(CLK/(2*A4F))))
+B4F_reload	EQU ((65536-(CLK/(2*B4F))))
+C5S_reload	EQU ((65536-(CLK/(2*C5S))))
+D5F_reload	EQU ((65536-(CLK/(2*D5F))))
+E5F_reload	EQU ((65536-(CLK/(2*E5F))))
+
 
 ; buttons
 BOOT_BUTTON   equ P4.5
@@ -59,10 +118,10 @@ bcd: ds 5
 Result: ds 2
 coldtemp: ds 1
 hottemp:ds 4
-soaktemp: ds 2
-soaktime: ds 2
-reflowtemp: ds 2
-reflowtime: ds 2
+soaktemp: ds 1
+soaktime: ds 1
+reflowtemp: ds 1
+reflowtime: ds 1
 countererror: ds 1
 temperature:ds 4
 Count1ms:     ds 2 ; Used to determine when half second has passed 
@@ -71,6 +130,10 @@ second: ds 1
 minute: ds 1
 temp: ds 1
 count: ds 1
+Disp1:  ds 1 
+Disp2:  ds 1
+Disp3:  ds 1
+state:  ds 1
 
 BSEG
 startflag: dbit 1
@@ -87,11 +150,11 @@ LCD_D5 equ P3.3
 LCD_D6 equ P3.4
 LCD_D7 equ P3.5
 
-StartButton equ P0.4 
-BUTTON_1 equ P0.3
-BUTTON_2 equ P0.2
-BUTTON_3 equ P0.7
-OvenButton equ P0.1
+StartButton equ P0.3
+BUTTON_1 equ P0.4
+BUTTON_2 equ P0.5
+BUTTON_3 equ P0.6
+OvenButton equ P1.0
 
 
 $NOLIST
@@ -113,10 +176,14 @@ MenuSoakTemp: db 'Soak Temp:', 0  ;used when changing parameter
 MenuSoakTime: db 'Soak Time:', 0
 MenuReflowTemp: db 'Reflow Temp:', 0
 MenuReflowTime: db 'Reflow Time:', 0
-ReflowStateMess: db 'Reflow State', 0
-SoakState: db 'Soak State', 0
-TemperatureRise: db 'Temp. Increase',0
+ReflowStateMess: db 'Reflow State    ', 0
+SoakState: db 'Soak State      ', 0
+TemperatureRise: db 'Temp. Increase  ',0
 CoolingTemp: db 'Oven is cooling.',0
+
+Tone_Message1:     db '1Surprise 2Mario', 0
+Tone_Message2:     db '   3Star Wars   ', 0
+
 
 Blank: db '              ',0
 
@@ -144,10 +211,11 @@ Timer0_Init:
 ; ISR for timer 0.  Set to execute;
 ; every 1/4096Hz to generate a    ;
 ; 2048 Hz square wave at pin P3.7 ;
+; Used for the state change beeps ;
 ;---------------------------------;
 
 Timer0_ISR:
-;	cpl SOUND_OUT; Connect speaker to P3.7!
+	cpl BEEPER
 	reti
   
 ;---------------------------------;
@@ -181,6 +249,35 @@ Timer2_ISR:
 	push acc
 	push psw
 	
+	setb CA1
+	setb CA2
+	setb CA3
+
+	mov a, state
+state0:
+	cjne a, #0, state1
+	mov a, disp1
+	lcall load_segments
+	clr CA1
+	inc state
+	sjmp state_done
+state1:
+	cjne a, #1, state2
+	mov a, disp2
+	lcall load_segments
+	clr CA2
+	inc state
+	sjmp state_done
+state2:
+	cjne a, #2, state_reset
+	mov a, disp3
+	lcall load_segments
+	clr CA3
+	mov state, #0
+	sjmp state_done
+state_reset:
+	mov state, #0
+state_done:
 	; Increment the 16-bit one mili second counter
 	inc Count1ms+0    ; Increment the low 8-bits first
 	mov a, Count1ms+0 ; If the low 8-bits overflow, then increment high 8-bits
@@ -190,9 +287,9 @@ Timer2_ISR:
   Inc_Done:
 	; Check if half second has passed
 	mov a, Count1ms+0
-	cjne a, #low(500), Timer2_ISR_done ; Warning: this instruction changes the carry flag!
+	cjne a, #low(1000), Timer2_ISR_done ; Warning: this instruction changes the carry flag!
 	mov a, Count1ms+1
-	cjne a, #high(500), Timer2_ISR_done
+	cjne a, #high(1000), Timer2_ISR_done
 	
     ; cpl TR0 ; Enable/disable timer/counter 0. This line creates a beep-silence-beep-silence sound.
     ; where is halfsecondflag?					
@@ -212,7 +309,25 @@ Timer2_ISR_done:
 	pop psw
 	pop acc
 	reti
-   
+
+load_segments:
+	mov c, acc.0
+	mov SEGA, c
+	mov c, acc.1
+	mov SEGB, c
+	mov c, acc.2
+	mov SEGC, c
+	mov c, acc.3
+	mov SEGD, c
+	mov c, acc.4
+	mov SEGE, c
+	mov c, acc.5
+	mov SEGF, c
+	mov c, acc.6
+	mov SEGG, c
+	mov c, acc.7
+	;mov SEGP, c
+	ret  
 ;---------------------------------;
 ; initialize the slave		      ;
 ;---------------------------------;
@@ -257,7 +372,7 @@ SendString:
     clr A
     movc A, @A+DPTR
     jz SendStringDone
-    lcall putchar
+    lcall putchar1
     inc DPTR
     sjmp SendString
 SendStringDone:
@@ -290,25 +405,55 @@ InitSerialPort:
 	mov	BDRCON,#0x1E ; BDRCON=BRR|TBCK|RBCK|SPD;
     ret
  
+; CODE FOR DISPLAYING 7SEG 
+  display7seg:
+ 		; ones digit disp 2
+	mov dptr, #HEX_7SEG
+	mov a, bcd+0
+	anl a, #0x0f
+	movc a, @a+dptr
+	mov disp2, a
+	
+	;tens digit disp3
+	mov a, bcd+0
+	swap a
+	anl a, #0x0f
+	movc a, @a+dptr
+	mov disp3, a
+	
+	;hundreds digit disp1
+	clr a
+	
+	mov a, bcd+1
+	;swap a
+	anl a, #0x0f
+	movc a, @a+dptr
+	
+	mov disp1, a
+	
+	ret
  ;---------------------------------;
 ; MAIN PROGRAM							      ;
 ;---------------------------------;  
+
+HEX_7SEG: DB 0xC0, 0xF9, 0xA4, 0xB0, 0x99, 0x92, 0x82, 0xF8, 0x80, 0x90
 
 MainProgram:
 	mov sp, #07FH ; Initialize the stack pointer
 	; Configure P0 in bidirectional mode
     mov P0M0, #0
     mov P0M1, #0
+    mov auxr, #00010001B
     setb EA 
     lcall LCD_4BIT
-    mov soaktemp, #120
-    mov soaktemp+1, #0x00
-    mov soaktime, #0x00
-    mov soaktime+1, #0x00
-    mov reflowtemp, #0x00
-    mov reflowtemp+1, #0x00
-    mov reflowtime, #0x00
-    mov reflowtime+1, #0x00
+    mov soaktemp, #0x0
+    
+    mov soaktime, #0x0
+
+    mov reflowtemp, #0x0
+   
+    mov reflowtime, #0x0
+
     mov second, #0
    ; mov countererror, #0	; to check if the thermocouple is in the oven
 		
@@ -328,32 +473,32 @@ MainProgram:
    ljmp Menu_select1 ;; selecting and setting profiles
     
 FOREVER: ;this will be how the oven is being controlled ; jump here once start button is pressed!!!
-;------state 1 -------- ;	
+
+	
+
    Set_Cursor(1,1)
    Send_Constant_String(#TemperatureRise)
   lcall checkstop       ;checks if stop button is pressed. If so, turns off oven and goes back to menu
    lcall checkerror      ;if error, terminate program and return
    lcall Readingtemperatures  ;calculates temperature of oven using thermocouple junctions
-   lcall DisplayingLCD
-
    
-   lcall State_change_BEEPER ; temp = soak temp, so going to soak time state 
-  
+   lcall DisplayingLCD
+   lcall display7seg
+   
+    ; temp = soak temp, so going to soak time state 
  
   clr c
   mov a, soaktemp
   subb a, coldtemp
   jnc FOREVER
-   
+   lcall State_change_BEEPER
   lcall TurnOvenOff
   
    clr tr2   			; restarting timer 2 to keep track of the time lasped since we reached soaktemp
    mov a, #0x0
    mov second, a
    setb tr2
-   sjmp skiped
- 
- skiped:
+   
   ; after we reached the soak temp stay there for __ seconds
   ;-----state 2 ------;
 soaktempchecked:
@@ -362,20 +507,24 @@ soaktempchecked:
 	lcall checkstop	
    lcall Readingtemperatures
    lcall DisplayingLCD
+   lcall display7seg
+   
   lcall keepingsoaktempsame ; boundary temp
   lcall keepingsoaktempsame1
+  
   lcall checksoaktime ; if soak time is up go to next state
+ 
   sjmp soaktempchecked
   
 ; ---- state 3 ---- ; increaseing to reflow temp
 increasereflowtemp: 
- ; lcall checkstop
+  lcall checkstop
   	Set_Cursor(1,1)
    Send_Constant_String(#TemperatureRise) 
   lcall Readingtemperatures
    lcall DisplayingLCD
-   
-
+    lcall display7seg
+  
   clr c
   mov a, reflowtemp
   subb a, coldtemp
@@ -383,7 +532,7 @@ increasereflowtemp:
    
   lcall TurnOvenOff  
    
- ; lcall checkingreflowtemp
+
   lcall State_change_BEEPER
   clr tr2
   mov a, #0
@@ -395,6 +544,7 @@ increasereflowtemp:
   lcall checkstop
   lcall Readingtemperatures
    lcall DisplayingLCD
+    lcall display7seg
    	Set_Cursor(1,1)
    Send_Constant_String(#ReflowStateMess) 
   lcall keepingreflowtempsame
@@ -406,12 +556,14 @@ increasereflowtemp:
  cooling:
  	Set_Cursor(1,1)
    Send_Constant_String(#CoolingTemp) 
- lcall Readingtemperatures
-  lcall DisplayingLCD
- lcall waitforcooling
-; lcall Open_oven_toaster_BEEPER
+   lcall Readingtemperatures
+   lcall DisplayingLCD
+   lcall display7seg
+   lcall waitforcooling
+   lcall TonePlayer2   ;Change according to which song you want
  
- ljmp $
+ 
+ ljmp Menu_select1
   
 ;---------------------------------;
 ; functions						 				    ;
@@ -524,33 +676,42 @@ soaktemptoolow:
   
 
 checksoaktime:
-	mov a, second
-  cjne a, soaktime, soaknotdone
+
+ 
+  clr c
+  mov a, soaktime
+  subb a, second
+  jnc soaknotdone
   lcall TurnOvenOn
   clr tr2
   mov a, #0
   mov second, a
   setb tr2
+   lcall State_change_BEEPER
   ljmp increasereflowtemp
 soaknotdone:
 	ret 
   
 checkreflowtime:
-	mov a, second
-  cjne a, reflowtime,reflownotdone
+
+  clr c
+  mov a, reflowtime
+  subb a, second
+  jnc reflownotdone
   lcall TurnOvenOff
   clr tr2
   mov a, #0
   mov second, a
   setb tr2
+   lcall Open_oven_toaster_BEEPER
   ljmp cooling
 reflownotdone:
 	ret
 
 ; reading the thermocouple junction values 
 Readingtemperatures:
-  lcall readingcoldjunction ;answer in x is saved in variable called 'coldtemp'
- ; lcall readinghotjunction
+  ;lcall readingcoldjunction ;answer in x is saved in variable called 'coldtemp'
+  lcall readinghotjunction
   
 
   mov a, x
@@ -563,13 +724,6 @@ Readingtemperatures:
 ; checking if the temperture at the hot end is equal to soak temp yet
 
 
-;checkingsoaktemperature: 
-;  clr c
- ; mov a, soaktemp
- ; subb a, coldtemp
- ; jnc Jump_to_FOREVER  
- ; lcall TurnOvenOff
- ; ret
 Jump_to_FOREVER:
 	ljmp FOREVER
 
@@ -607,25 +761,25 @@ TurnOvenOn:
   ret
 
 DisplayingLCD:
-	mov bcd, second
+
+ 
+    
+	mov x, second
+	lcall hex2bcd
 	Set_Cursor(2,1)
 	Display_BCD(bcd+1)
 	Set_Cursor(2,3)
 	Display_BCD(bcd)
 	
-	Set_Cursor(2, 12)
-	mov x, coldtemp
-
 	
+	mov x, coldtemp	
 	lcall hex2bcd	
+	Set_Cursor(2, 10)
+    Display_BCD(bcd+1)
+    Set_Cursor(2, 12)
 	Display_BCD(bcd)
-
-Set_Cursor(2, 10)
-Display_BCD(bcd+1)	
-	;Set_Cursor(2, 10)
-	;Display_BCD(bcd+1)
-
-		
+   
+    			
 	Set_Cursor(2,15)
     WriteData(#0xDF)
     Set_Cursor(2,16)
@@ -649,7 +803,7 @@ checkerror:
   jnc noerror
 
   
-  mov a, #0x50
+  mov a, #50
   subb a, coldtemp
   jnc error
   sjmp noerror
@@ -788,39 +942,40 @@ Display_Temp_Putty:
 	Send_BCD(bcd+1)
 	Send_BCD(bcd)
 	mov a, #'\r'
-	lcall putchar
+	lcall putchar1
 	mov a, #'\n'
-	lcall putchar
+	lcall putchar1
 	ret	
 ;beeper function to indicate reflow process has started
 Reflow_start_BEEPER:
- setb BEEPER
- cpl BEEPER
+ lcall ToneReset
+ setb tr0
+ cpl tr0
  Wait_Milli_Seconds(#250)
  Wait_Milli_Seconds(#250)
- clr BEEPER
+ clr tr0
  ret
  
 State_change_BEEPER:
- setb BEEPER
- cpl BEEPER
+ lcall ToneReset
+ setb tr0
  Wait_Milli_Seconds(#250)
  Wait_Milli_Seconds(#250)
- clr BEEPER
+ clr tr0
  ret
  
-Open_toaster_oven_BEEPER:
- clr a ; c=0
-loop6times: 
- cjne a, #6, beep
- ret
- beep: 
- setb BEEPER
- cpl BEEPER
- Wait_Milli_Seconds(#100)
- clr BEEPER
- inc a 
- sjmp loop6times
+Open_oven_toaster_BEEPER:
+  lcall ToneReset
+ setb tr0
+ Wait_Milli_Seconds(#250)
+ Wait_Milli_Seconds(#250)
+ Wait_Milli_Seconds(#250)
+ Wait_Milli_Seconds(#250)
+ Wait_Milli_Seconds(#250)
+ Wait_Milli_Seconds(#250)
+
+
+ clr tr0
  ret
 ; Display Temperature in LCD
 Display_Temp_LCD:
@@ -872,7 +1027,8 @@ Jump_To_FOREVER1:
   lcall Timer2_init
 	
 	mov second, #0
-	
+ ;lcall TonePlayer2
+	Wait_Milli_Seconds(#50)
 	ljmp FOREVER
 
 Jump_to_Set_SoakTemp1:
@@ -894,9 +1050,11 @@ Set_SoakTemp1:
   Set_Cursor(1, 1)
   Send_Constant_String(#MenuSoakTemp)
   Set_Cursor(2, 1)
-  Display_BCD(soaktemp+1)
+  mov x, soaktemp
+  lcall hex2bcd
+  Display_BCD(bcd+1)
   Set_Cursor(2, 3)
-  Display_BCD(soaktemp+0)
+  Display_BCD(bcd+0)
 Set_SoakTemp2:
   jb BUTTON_1, Set_SoakTemp2_2
   Wait_Milli_Seconds(#50)
@@ -915,65 +1073,36 @@ Set_SoakTemp2_3:
 Set_SoakTemp2_4:
   ljmp Set_SoakTemp2
   
-SoakTemp_inc:
-  mov a, soaktemp+0
-  cjne a, #0x99, SoakTemp_inc2
-  mov a, soaktemp+1
-  cjne a, #0x02, SoakTemp_inc3
-  clr a                      ;299->0
-  mov soaktemp+1, a
-  mov soaktemp+0, a
-  sjmp SoakTemp_inc4
-SoakTemp_inc2:   ;regular increment
-  add a, #0x01
-  da a
-  mov soaktemp+0, a
-  sjmp SoakTemp_inc4
-SoakTemp_inc3:    ;99->100, 199->200, etc
-  mov a, soaktemp+1 
-  add a, #0x01
-  da a
-  mov soaktemp+1, a
-  clr a
-  mov soaktemp+0, a
-  sjmp SoakTemp_inc4
-SoakTemp_inc4:  ;display
-  mov x, soaktemp
-  lcall hex2bcd
+soaktemp_inc:
+ mov x, soaktemp
+ mov x+1, #0
+ mov x+2, #0
+ mov x+3, #0
+ load_y(1)
+ lcall add32
+ mov soaktemp, x
+ lcall display_soak_temp 
+ ljmp Set_SoakTemp2
+ 
+soaktemp_dec: 
+ mov x, soaktemp
+ mov x+1, #0
+ mov x+2, #0
+ mov x+3, #0
+ load_y(1)
+ lcall sub32
+ mov soaktemp, x
+ lcall display_soak_temp 
+ ljmp Set_SoakTemp2
   
+display_soak_temp: 
+ mov x, soaktemp
+ lcall hex2bcd
   Set_Cursor(2, 1)
   Display_BCD(bcd+1)
   Set_Cursor(2, 3)
   Display_BCD(bcd+0)
-  ljmp Set_SoakTemp2
-  
-SoakTemp_dec:
-  mov a, soaktemp+0
-  cjne a, #0x00, SoakTemp_dec2
-  mov a, soaktemp+1
-  cjne a, #0x00, SoakTemp_dec3
-  mov soaktemp+1, #0x02                 ;0->299
-  mov soaktemp+0, #0x99
-  sjmp SoakTemp_dec4
-SoakTemp_dec2:   ;regular decrement
-  add a, #0x99
-  da a
-  mov soaktemp+0, a
-  sjmp SoakTemp_dec4
-SoakTemp_dec3:   ;100->99, 200-> 199
-  mov a, soaktemp+1 
-  add a, #0x99
-  da a
-  mov soaktemp+1, a
-  mov a, #0x99
-  mov soaktemp+0, a
-  sjmp SoakTemp_dec4
-SoakTemp_dec4:    ;display
-  Set_Cursor(2, 1)
-  Display_BCD(soaktemp+1)
-  Set_Cursor(2, 3)
-  Display_BCD(soaktemp+0)
-  ljmp Set_SoakTemp2
+ret   
 
 ; Settings - Soak Time
 Set_SoakTime1:
@@ -982,14 +1111,16 @@ Set_SoakTime1:
   Set_Cursor(1, 1)
   Send_Constant_String(#MenuSoakTime)
   Set_Cursor(2, 1)
-  Display_BCD(soaktime+1)
+  mov x, soaktime
+  lcall hex2bcd
+  Display_BCD(bcd+1)
   Set_Cursor(2, 3)
-  Display_BCD(soaktime+0)
+  Display_BCD(bcd+0)
 Set_SoakTime2:
   jb BUTTON_1, Set_SoakTime2_2
   Wait_Milli_Seconds(#50)
   jb BUTTON_1, Set_SoakTime2_2
-  ljmp SoakTime_inc1
+  ljmp SoakTime_inc
 Set_SoakTime2_2:
   jb BUTTON_2, Set_SoakTime2_3
   Wait_Milli_Seconds(#50)
@@ -1003,76 +1134,37 @@ Set_SoakTime2_3:
 Set_SoakTime2_4:
   ljmp Set_SoakTime2
 
-soaktime_inc1:
+soaktime_inc:
  mov x, soaktime
+ mov x+1, #0
+ mov x+2, #0
+ mov x+3, #0
  load_y(1)
  lcall add32
  mov soaktime, x
+ lcall display_soak_time
+ ljmp Set_SoakTime2
+ 
+soaktime_dec: 
+ mov x, soaktime
+ mov x+1, #0
+ mov x+2, #0
+ mov x+3, #0
+ load_y(1)
+ lcall sub32
+ mov soaktime, x
+ lcall display_soak_time
+ ljmp Set_SoakTime2
+  
+display_soak_time: 
+ mov x, soaktime
  lcall hex2bcd
- Set_Cursor(2, 1)
+  Set_Cursor(2, 1)
   Display_BCD(bcd+1)
   Set_Cursor(2, 3)
   Display_BCD(bcd+0)
-  ljmp Set_SoakTime2
+ret   
 
-SoakTime_inc:
-  mov a, soaktime+0
-  cjne a, #0x99, SoakTime_inc2
-  mov a, soaktime+1
-  cjne a, #0x02, SoakTime_inc3
-  clr a                      ;299->0
-  mov soaktime+1, a
-  mov soaktime+0, a
-  sjmp SoakTime_inc4
-  
-  
-SoakTime_inc2:   ;regular increment
-  add a, #0x01
-  da a
-  mov soaktime+0, a
-  sjmp SoakTime_inc4
-SoakTime_inc3:    ;99->100, 199->200, etc
-  mov a, soaktime+1 
-  add a, #0x01
-  da a
-  mov soaktime+1, a
-  clr a
-  mov soaktime+0, a
-  sjmp SoakTime_inc4
-SoakTime_inc4:  ;display
-  Set_Cursor(2, 1)
-  Display_BCD(soaktime+1)
-  Set_Cursor(2, 3)
-  Display_BCD(soaktime+0)
-  ljmp Set_SoakTime2
-  
-SoakTime_dec:
-  mov a, soaktime+0
-  cjne a, #0x00, SoakTime_dec2
-  mov a, soaktime+1
-  cjne a, #0x00, SoakTime_dec3
-  mov soaktime+1, #0x02                 ;0->299
-  mov soaktime+0, #0x99
-  sjmp SoakTime_dec4
-SoakTime_dec2:   ;regular decrement
-  add a, #0x99
-  da a
-  mov soaktime+0, a
-  sjmp SoakTime_dec4
-SoakTime_dec3:   ;100->99, 200-> 199
-  mov a, soaktime+1 
-  add a, #0x99
-  da a
-  mov soaktime+1, a
-  mov a, #0x99
-  mov soaktime+0, a
-  sjmp SoakTime_dec4
-SoakTime_dec4:    ;display
-  Set_Cursor(2, 1)
-  Display_BCD(soaktime+1)
-  Set_Cursor(2, 3)
-  Display_BCD(soaktime+0)
-  ljmp Set_SoakTime2
 
 ; Second set of Menu - Set reflow parameters
 Menu_select3:
@@ -1130,9 +1222,11 @@ Set_ReflowTemp1:
   Set_Cursor(1, 1)
   Send_Constant_String(#MenuReflowTemp)
   Set_Cursor(2, 1)
-  Display_BCD(reflowtemp+1)
+  mov x, reflowtemp
+  lcall hex2bcd
+  Display_BCD(bcd+1)
   Set_Cursor(2, 3)
-  Display_BCD(reflowtemp+0)
+  Display_BCD(bcd+0)
   
 Set_ReflowTemp2:
   jb BUTTON_1, Set_ReflowTemp2_2
@@ -1152,62 +1246,43 @@ Set_ReflowTemp2_3:
 Set_ReflowTemp2_4:
   ljmp Set_ReflowTemp2
  
-ReflowTemp_inc:
-  mov a, reflowtemp+0
-  cjne a, #0x99, ReflowTemp_inc2
-  mov a, reflowtemp+1
-  cjne a, #0x02, ReflowTemp_inc3
-  clr a                      ;299->0
-  mov reflowtemp+1, a
-  mov reflowtemp+0, a
-  sjmp ReflowTemp_inc4
-ReflowTemp_inc2:   ;regular increment
-  add a, #0x01
-  da a
-  mov reflowtemp+0, a
-  sjmp ReflowTemp_inc4
-ReflowTemp_inc3:    ;99->100, 199->200, etc
-  mov a, reflowtemp+1 
-  add a, #0x01
-  da a
-  mov reflowtemp+1, a
-  clr a
-  mov reflowtemp+0, a
-  sjmp ReflowTemp_inc4
-ReflowTemp_inc4:  ;display
-  Set_Cursor(2, 1)
-  Display_BCD(reflowtemp+1)
-  Set_Cursor(2, 3)
-  Display_BCD(reflowtemp+0)
-  ljmp Set_ReflowTemp2
+ 
+ 
   
 ReflowTemp_dec:
-  mov a, reflowtemp+0
-  cjne a, #0x00, ReflowTemp_dec2
-  mov a, reflowtemp+1
-  cjne a, #0x00, ReflowTemp_dec3
-  mov reflowtemp+1, #0x02                 ;0->299
-  mov reflowtemp+0, #0x99
-  sjmp ReflowTemp_dec4
-ReflowTemp_dec2:   ;regular decrement
-  add a, #0x99
-  da a
-  mov reflowtemp+0, a
-  sjmp ReflowTemp_dec4
-ReflowTemp_dec3:   ;100->99, 200-> 199
-  mov a, reflowtemp+1 
-  add a, #0x99
-  da a
-  mov reflowtemp+1, a
-  mov a, #0x99
-  mov reflowtemp+0, a
-  sjmp ReflowTemp_dec4
-ReflowTemp_dec4:    ;display
+ mov x, reflowtemp
+ mov x+1, #0
+ mov x+2, #0
+ mov x+3, #0
+ load_y(1)
+ lcall sub32
+ mov reflowtemp, x
+ lcall display_reflow_temp
+ ljmp Set_reflowtemp2
+  
+display_reflow_temp: 
+ mov x, reflowtemp
+ mov x+1, #0
+ mov x+2, #0
+ mov x+3, #0
+ lcall hex2bcd
   Set_Cursor(2, 1)
-  Display_BCD(reflowtemp+1)
+  Display_BCD(bcd+1)
   Set_Cursor(2, 3)
-  Display_BCD(reflowtemp+0)
-  ljmp Set_ReflowTemp2
+  Display_BCD(bcd+0)
+ret   
+ 
+  
+Reflowtemp_inc:
+ mov x, reflowtemp
+ mov x+1, #0
+ mov x+2, #0
+ mov x+3, #0
+ load_y(1)
+ lcall add32
+ mov reflowtemp, x
+ lcall display_reflow_temp
+ ljmp Set_Reflowtemp2
 
 ; Settings - Reflow Time
 Set_ReflowTime1:
@@ -1216,9 +1291,11 @@ Set_ReflowTime1:
   Set_Cursor(1, 1)
   Send_Constant_String(#MenuReflowTime)
   Set_Cursor(2, 1)
-  Display_BCD(reflowtime+1)
+  mov x, reflowtime
+  lcall hex2bcd
+  Display_BCD(bcd+1)
   Set_Cursor(2, 3)
-  Display_BCD(reflowtime+0)
+  Display_BCD(bcd+0)
 Set_ReflowTime2:
   jb BUTTON_1, Set_ReflowTime2_2
   Wait_Milli_Seconds(#50)
@@ -1238,61 +1315,390 @@ Set_ReflowTime2_4:
   ljmp Set_ReflowTime2
 
 ReflowTime_inc:
-  mov a, reflowtime+0
-  cjne a, #0x99, ReflowTime_inc2
-  mov a, reflowtime+1
-  cjne a, #0x02, ReflowTime_inc3
-  clr a                      ;299->0
-  mov reflowtime+1, a
-  mov reflowtime+0, a
-  sjmp ReflowTime_inc4
-ReflowTime_inc2:   ;regular increment
-  add a, #0x01
-  da a
-  mov reflowtime+0, a
-  sjmp ReflowTime_inc4
-ReflowTime_inc3:    ;99->100, 199->200, etc
-  mov a, reflowtime+1 
-  add a, #0x01
-  da a
-  mov reflowtime+1, a
-  clr a
-  mov reflowtime+0, a
-  sjmp ReflowTime_inc4
-ReflowTime_inc4:  ;display
+ mov x, reflowtime
+ mov x+1, #0
+ mov x+2, #0
+ mov x+3, #0
+ load_y(1)
+ lcall add32
+ mov reflowtime, x
+ lcall display_reflow_time 
+ ljmp Set_reflowTime2
+  
+display_reflow_time: 
+ mov x, reflowtime
+ mov x+1, #0
+ mov x+2, #0
+ mov x+3, #0
+ lcall hex2bcd
   Set_Cursor(2, 1)
-  Display_BCD(reflowtime+1)
+  Display_BCD(bcd+1)
   Set_Cursor(2, 3)
-  Display_BCD(reflowtime+0)
-  ljmp Set_ReflowTime2
+  Display_BCD(bcd+0)
+ret   
+ 
   
 ReflowTime_dec:
-  mov a, reflowtime+0
-  cjne a, #0x00, ReflowTime_dec2
-  mov a, reflowtime+1
-  cjne a, #0x00, ReflowTime_dec3
-  mov reflowtime+1, #0x02                 ;0->299
-  mov reflowtime+0, #0x99
-  sjmp ReflowTime_dec4
-ReflowTime_dec2:   ;regular decrement
-  add a, #0x99
-  da a
-  mov reflowtime+0, a
-  sjmp ReflowTime_dec4
-ReflowTime_dec3:   ;100->99, 200-> 199
-  mov a, reflowtime+1 
-  add a, #0x99
-  da a
-  mov reflowtime+1, a
-  mov a, #0x99
-  mov reflowtime+0, a
-  sjmp ReflowTime_dec4
-ReflowTime_dec4:    ;display
-  Set_Cursor(2, 1)
-  Display_BCD(reflowtime+1)
-  Set_Cursor(2, 3)
-  Display_BCD(reflowtime+0)
-  ljmp Set_ReflowTime2
+ mov x, reflowtime
+ mov x+1, #0
+ mov x+2, #0
+ mov x+3, #0
+ load_y(1)
+ lcall sub32
+ mov reflowtime, x
+ lcall display_reflow_time
+ ljmp Set_Reflowtime2
+
+
+;--------------------;
+; Bonus - Song stuff ;
+;--------------------;
+;;;These aren't used in this program (for now at least)
+Tone1:
+	WriteCommand(#0x01)
+	Wait_Milli_Seconds(#50)
+	Set_Cursor(1, 1)
+    Send_Constant_String(#Tone_Message1)
+	Set_Cursor(2, 1)
+    Send_Constant_String(#Tone_Message2)
+
+Tone2:
+	jb BUTTON_1, Tone2_2
+	jnb BUTTON_1, $
+	ljmp TonePlayer1
+Tone2_2:
+	jb BUTTON_2, Tone2_3
+	jnb BUTTON_2, $
+	ljmp TonePlayer2
+Tone2_3:
+	jb BUTTON_3, Tone2
+	jnb BUTTON_3, $
+	ljmp TonePlayer3
 	
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+ToneC4:
+	ToneSetH(#high(C4_reload))
+	ToneSetL(#low(C4_reload))
+	ret
+
+ToneD4:
+	ToneSetH(#high(D4_reload))
+	ToneSetL(#low(D4_reload))
+	ret
+
+ToneE4:
+	ToneSetH(#high(E4_reload))
+	ToneSetL(#low(E4_reload))
+	ret
+
+ToneF4:
+	ToneSetH(#high(F4_reload))
+	ToneSetL(#low(F4_reload))
+	ret
+
+ToneG4:
+	ToneSetH(#high(G4_reload))
+	ToneSetL(#low(G4_reload))
+	ret
+		
+ToneA4:
+	ToneSetH(#high(A4_reload))
+	ToneSetL(#low(A4_reload))
+	ret
 	
+ToneB4:
+	ToneSetH(#high(B4_reload))
+	ToneSetL(#low(B4_reload))
+	ret
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+ToneC5:
+	ToneSetH(#high(C5_reload))
+	ToneSetL(#low(C5_reload))
+	ret
+
+ToneD5:
+	ToneSetH(#high(D5_reload))
+	ToneSetL(#low(D5_reload))
+	ret
+	
+ToneE5:
+	ToneSetH(#high(E5_reload))
+	ToneSetL(#low(E5_reload))
+	ret
+	
+ToneF5:
+	ToneSetH(#high(F5_reload))
+	ToneSetL(#low(F5_reload))
+	ret
+	
+ToneG5:
+	ToneSetH(#high(G5_reload))
+	ToneSetL(#low(G5_reload))
+	ret
+	
+ToneA5:
+	ToneSetH(#high(A5_reload))
+	ToneSetL(#low(A5_reload))
+	ret
+	
+ToneB5:
+	ToneSetH(#high(B5_reload))
+	ToneSetL(#low(B5_reload))
+	ret
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+ToneG4F:
+	ToneSetH(#high(G4F_reload))
+	ToneSetL(#low(G4F_reload))
+	ret
+	
+ToneA4F:
+	ToneSetH(#high(A4F_reload))
+	ToneSetL(#low(A4F_reload))
+	ret
+
+ToneB4F:
+	ToneSetH(#high(B4F_reload))
+	ToneSetL(#low(B4F_reload))
+	ret
+	
+ToneC5S:
+	ToneSetH(#high(C5S_reload))
+	ToneSetL(#low(C5S_reload))
+	ret
+
+ToneD5F:
+	ToneSetH(#high(D5F_reload))
+	ToneSetL(#low(D5F_reload))
+	ret
+	
+ToneE5F:
+	ToneSetH(#high(E5F_reload))
+	ToneSetL(#low(E5F_reload))
+	ret
+
+ToneReset:
+	ToneSetH(#high(TIMER0_RELOAD))
+	ToneSetL(#low(TIMER0_RELOAD))
+	ret
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+TonePlayer1: ;Never Gonna Give You Up
+	lcall ToneA4F              ;Nev
+	lcall TonePlayEighthSec
+	
+	lcall ToneB4F               ;er
+	lcall TonePlayEighthSec
+	
+	lcall ToneD5F               ;gon
+	lcall TonePlayEighthSec
+	
+	lcall ToneB4F                 ;na
+	lcall TonePlayEighthSec
+	
+	lcall ToneF5                     ;give
+	lcall TonePlayThreeEighthSec
+	
+	lcall ToneF5                    ;you
+	lcall TonePlayThreeEighthSec
+	
+	lcall ToneE5F                   ;up
+	lcall TonePlayThreeEighthSec   
+	
+	Wait_Milli_Seconds(#80)
+	
+	lcall ToneA4F                ;Nev
+	lcall TonePlayEighthSec
+	
+	lcall ToneB4F                 ;er
+	lcall TonePlayEighthSec
+	
+	lcall ToneC5                   ;gon
+	lcall TonePlayEighthSec
+	
+	lcall ToneA4F                  ;na
+	lcall TonePlayEighthSec
+	
+	lcall ToneE5F                    ;let
+	lcall TonePlayThreeEighthSec
+	
+	lcall ToneE5F                   ;you
+	lcall TonePlayThreeEighthSec
+	
+	lcall ToneD5F                  ;down
+	lcall TonePlayThreeEighthSec
+	
+	Wait_Milli_Seconds(#80)
+		
+	lcall ToneA4F              ;Nev
+	lcall TonePlayEighthSec
+	
+	lcall ToneB4F                ;er
+	lcall TonePlayEighthSec
+	
+	lcall ToneD5F                   ;gon
+	lcall TonePlayEighthSec
+	
+	lcall ToneB4F                   ;na
+	lcall TonePlayEighthSec
+
+	lcall ToneD5F                 ;run
+	lcall TonePlayQuarterSec
+	
+	lcall ToneE5F                  ;a
+	lcall TonePlayThreeEighthSec
+	
+	lcall ToneC5                   ;round
+	lcall TonePlayThreeEighthSec
+	
+	;lcall ToneB4F
+	;lcall TonePlayEighthSec
+	
+	lcall ToneA4F                ;and
+	lcall TonePlayQuarterSec	
+	
+	lcall ToneA4F                ;de
+	lcall TonePlayEighthSec
+	
+	lcall ToneE5F                  ;sert
+	lcall TonePlayThreeEighthSec
+	
+	lcall ToneD5F             ;you
+	lcall TonePlayThreeEighthSec
+	
+	ret
+
+TonePlayer2: ;Mario
+	lcall ToneE5
+	lcall TonePlayQuarterSec
+	
+	lcall ToneE5
+	lcall TonePlayQuarterSec
+	
+	Wait_Milli_Seconds(#80)
+		
+	lcall ToneE5
+	lcall TonePlayThreeEighthSec
+
+	Wait_Milli_Seconds(#80)
+		
+	lcall ToneC5
+	lcall TonePlayQuarterSec
+	
+	lcall ToneE5
+	lcall TonePlayQuarterSec
+	
+	Wait_Milli_Seconds(#80)
+	
+	lcall ToneG5
+	lcall TonePlayThreeEighthSec
+	
+	Wait_Milli_Seconds(#80)
+	Wait_Milli_Seconds(#80)
+	Wait_Milli_Seconds(#80)
+	Wait_Milli_Seconds(#80)
+	
+	lcall ToneG4
+	lcall TonePlayHalfSec
+	
+	ret
+
+TonePlayer3: ;Star Wars
+	lcall ToneC4
+	lcall TonePlayHalfSec
+	
+	lcall ToneG4
+	lcall TonePlayHalfSec
+	
+	lcall ToneF4
+	lcall TonePlayQuarterSec
+	
+	lcall ToneE4
+	lcall TonePlayThreeEighthSec
+	
+	lcall ToneD4
+	lcall TonePlayThreeEighthSec
+	
+	lcall ToneC5
+	lcall TonePlayHalfSec
+		
+	lcall ToneG4
+	lcall TonePlayQuarterSec
+	
+	Wait_Milli_Seconds(#80)
+		
+	lcall ToneF4
+	lcall TonePlayQuarterSec
+	
+	lcall ToneE4
+	lcall TonePlayQuarterSec
+	
+	lcall ToneD4
+	lcall TonePlayQuarterSec
+	
+	lcall ToneC5
+	lcall TonePlayHalfSec
+	
+	lcall ToneG4
+	lcall TonePlayQuarterSec
+	
+	Wait_Milli_Seconds(#80)
+		
+	lcall ToneF4
+	lcall TonePlayQuarterSec
+	
+	lcall ToneE4
+	lcall TonePlayQuarterSec
+	
+	lcall ToneF4
+	lcall TonePlayQuarterSec
+	
+	lcall ToneD4
+	lcall TonePlayHalfSec
+	
+	ret
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+TonePlayEighthSec:
+	setb TR0
+	Delay_PercentSec(#0x1)   ; 1*(1/8) = 1/8 sec
+	clr TR0
+	Wait_Milli_Seconds(#80)
+	ret
+
+TonePlayQuarterSec:
+	setb TR0
+	Delay_PercentSec(#0x2)   ; 2*(1/8) = 1/4 sec
+	clr TR0
+	Wait_Milli_Seconds(#80)
+	ret
+
+TonePlayThreeEighthSec:
+	setb TR0
+	Delay_PercentSec(#0x3)   ; 3*(1/8) = 3/8 sec
+	clr TR0
+	Wait_Milli_Seconds(#80)
+	ret
+
+TonePlayHalfSec:
+	setb TR0
+	Delay_PercentSec(#0x4)   ; 4*(1/8) = 1/2 sec
+	clr TR0
+	Wait_Milli_Seconds(#80)
+	ret
+
+TonePlayOneSec:
+	setb TR0
+	Delay_PercentSec(#0x8)   ; 8*(1/8) = 1 sec
+	clr TR0
+	Wait_Milli_Seconds(#80)
+	ret
+
+TonePlayOneandHalfSec:
+	setb TR0
+	Delay_PercentSec(#0x12)   ; 12*(1/8) = 1.5 sec
+	clr TR0
+	Wait_Milli_Seconds(#80)
+	ret	
+	
+
 END
