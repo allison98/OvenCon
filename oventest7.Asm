@@ -124,12 +124,9 @@ soaktemp: ds 1
 soaktime: ds 1
 reflowtemp: ds 1
 reflowtime: ds 1
-countererror: ds 1
-temperature:ds 4
 Count1ms:     ds 2 ; Used to determine when half second has passed 
 reflowparam: ds 1
 second: ds 1
-minute: ds 1
 temp: ds 1
 count: ds 1
 Disp1:  ds 1 
@@ -165,8 +162,6 @@ BUTTON_1 equ P0.4
 BUTTON_2 equ P0.5
 BUTTON_3 equ P0.6
 OvenButton equ P1.0
-
-
 
 $NOLIST
 $include(LCD_4bit.inc) ; A library of LCD related functions and utility macros
@@ -208,9 +203,8 @@ Blue:      db '1', 0
 Green:     db '2', 0
 Red:       db '3', 0
 Yellow:    db '4', 0
-
-
 Blank: db '              ',0
+HEX_7SEG: DB 0xC0, 0xF9, 0xA4, 0xB0, 0x99, 0x92, 0x82, 0xF8, 0x80, 0x90
 
 ;---------------------------------;
 ; Routine to initialize the ISR   ;
@@ -264,7 +258,11 @@ Timer2_Init:
 	ret
 
 ;---------------------------------;
-; ISR for timer 2                 ;
+; ISR for timer 2  				  ;
+; this will increment the timer   ;
+; through the variable second     ;
+;							      ;
+; also the 7seg state machine     ;
 ;---------------------------------;
 Timer2_ISR:
 	clr TF2  ; Timer 2 doesn't clear TF2 automatically. Do it in ISR
@@ -336,6 +334,9 @@ Timer2_ISR_done:
 	pop acc
 	reti
 
+;---------------------------------;
+; for the 7 segment               ;
+;---------------------------------;
 load_segments:
 	mov c, acc.0
 	mov SEGA, c
@@ -354,6 +355,8 @@ load_segments:
 	mov c, acc.7
 	;mov SEGP, c
 	ret  
+	
+	
 ;---------------------------------;
 ; initialize the slave		      ;
 ;---------------------------------;
@@ -364,7 +367,7 @@ INIT_SPI:
  ret
 
 ;---------------------------------;
-; receive and send data	       		;
+; receive and send data	          ;
 ;---------------------------------;
 
 DO_SPI_G:
@@ -431,7 +434,9 @@ InitSerialPort:
 	mov	BDRCON,#0x1E ; BDRCON=BRR|TBCK|RBCK|SPD;
     ret
  
-; CODE FOR DISPLAYING 7SEG 
+;--------------------------;
+; CODE FOR DISPLAYING 7SEG ;
+;--------------------------; 
   display7seg:
  		; ones digit disp 2
 	mov dptr, #HEX_7SEG
@@ -458,11 +463,10 @@ InitSerialPort:
 	mov disp1, a
 	
 	ret
- ;---------------------------------;
-; MAIN PROGRAM							      ;
-;---------------------------------;  
 
-HEX_7SEG: DB 0xC0, 0xF9, 0xA4, 0xB0, 0x99, 0x92, 0x82, 0xF8, 0x80, 0x90
+ ;--------------------------------;
+; MAIN PROGRAM STARTS		      ;
+;---------------------------------;  
 
 MainProgram:
 	mov sp, #07FH ; Initialize the stack pointer
@@ -472,16 +476,11 @@ MainProgram:
     mov auxr, #00010001B
     setb EA 
     lcall LCD_4BIT
-    mov soaktemp, #0x0
-    
+    mov soaktemp, #0x0   
     mov soaktime, #0x0
-
     mov reflowtemp, #0x0
-   
     mov reflowtime, #0x0
-
     mov second, #0
-   
 	mov songstartnum, #0x2
     mov songendnum, #0x0
     mov letter, #'A'
@@ -489,25 +488,18 @@ MainProgram:
     mov letter3, #'A'
     mov letter4, #'A'
     
-   ; mov countererror, #0	; to check if the thermocouple is in the oven
-		
-    ;initial message 
-   ; Set_Cursor(1, 1)
-   ; Send_Constant_String(#Test_msg)
-   ; Set_Cursor(1,11)
-   ; WriteData(#223) ; print the degree sign   
     mov count, #0
     
     lcall InitSerialPort
 		lcall INIT_SPI
 		lcall Timer0_Init
-  ;  lcall Timer2_Init
    lcall TurnOvenOff
   ; lcall TurnOvenOn
-  	ljmp Password1
+  	ljmp Password1 ; jump to setting the passwork to enter the system
 	;ljmp Menu_select1;ljmp Password1 ;; selecting and setting profiles
     
 FOREVER: ;this will be how the oven is being controlled ; jump here once start button is pressed!!!
+
 ;------state 1------;
    Set_Cursor(1,1)
    Send_Constant_String(#TemperatureRise)
@@ -518,7 +510,7 @@ FOREVER: ;this will be how the oven is being controlled ; jump here once start b
    lcall DisplayingLCD_WOTIME
    lcall display7seg
    
-    ; temp = soak temp, so going to soak time state 
+    ; coldtemp = soak temp, so going to soak time state 
  
   clr c
   mov a, soaktemp
@@ -549,7 +541,7 @@ soaktempchecked:
  
   sjmp soaktempchecked
   
-; ---- state 3 ---- ; increaseing to reflow temp
+; ---- state 3 ---- ; increasing to reflow temp
 increasereflowtemp: 
   lcall checkstop
   	Set_Cursor(1,1)
@@ -572,7 +564,7 @@ increasereflowtemp:
   mov second, a
   setb tr2
 
-  ;----state 4 ---;
+  ;----state 4 ---; stay in the reflow temp for __ seconds
  reflowstate:
   lcall checkstop
   lcall Readingtemperatures
@@ -585,7 +577,7 @@ increasereflowtemp:
   lcall checkreflowtime
   sjmp reflowstate
   
- ;------- state5-----;
+ ;------- state5-----; cooling down the oven
  cooling:
  	Set_Cursor(1,1)
    Send_Constant_String(#CoolingTemp) 
@@ -595,13 +587,15 @@ increasereflowtemp:
    lcall display7seg
    set_cursor(2,1)
    send_constant_string(#blank)
+   
    	mov x, coldtemp	
 	lcall hex2bcd	
 	Set_Cursor(2, 10)
     Display_BCD(bcd+1)
     Set_Cursor(2, 12)
 	Display_BCD(bcd)
-    
+	
+    lcall display_temp_putty
    
   clr c
   mov a, #60
@@ -631,15 +625,6 @@ waitforcooling:
   jnc cooled
   ljmp cooling
   
-  
-;	load_X(coldtemp)
-;  load_Y(60)
-;  lcall x_gteq_y   ; compare if temp >= 60 
-;  jnb mf, cooled
-;  ljmp cooling
-  
- 
-;cooled:
 	ret
 
 ; *********** STATE 2 **********
@@ -657,15 +642,10 @@ keepingsoaktempsame:
   jnc soaktempisokay
   ljmp soaktemptoohigh
 
-  ;load_Y(coldtemp)
-  ;lcall x_gteq_y   ; compare if temp <= soaktemp + 10
- ; jnb mf, soaktemptoohigh; if mf!=1 then keep checking
+ 
  
  keepingsoaktempsame1:
-  ; temp>= soaktemp-10
- ; load_Y(5)
- ; load_X(soaktemp)
- ; lcall sub32	
+ 
   mov a, soaktemp
   clr c
   subb a, #1
@@ -701,15 +681,9 @@ soaktemptoolow:
   jnc soaktempisokay
   ljmp soaktemptoohigh
 
-  ;load_Y(coldtemp)
-  ;lcall x_gteq_y   ; compare if temp <= soaktemp + 10
- ; jnb mf, soaktemptoohigh; if mf!=1 then keep checking
- 
+
  keepingreflowtempsame1:
-  ; temp>= soaktemp-10
- ; load_Y(5)
- ; load_X(soaktemp)
- ; lcall sub32	
+  
   mov a, reflowtemp
   clr c
   subb a, #1
@@ -762,9 +736,7 @@ Readingtemperatures:
   mov a, x
   mov coldtemp, a
  ret
- ; mov a, x
- ; mov coldtemp, a ;final temperature is in the temperature variable
- ; ret
+ 
 
 ; checking if the temperture at the hot end is equal to soak temp yet
 
@@ -832,8 +804,7 @@ DisplayingLCD:
     
     ret
     
-    
-   
+     
     
 DisplayingLCD_wotime:
 set_cursor(2,1)
@@ -855,8 +826,8 @@ set_cursor(2,1)
     ret
 
 
-
-;As a safety measure, the reflow process must be aborted if the oven doesn’t reach at least 50oC in the first 60 seconds of operation
+;As a safety measure, the reflow process must be aborted if the oven doesn’t 
+;reach at least 50oC in the first 60 seconds of operation
 checkerror: 
 	push acc
   push psw
@@ -1014,6 +985,7 @@ Display_Temp_Putty:
 	mov a, #'\n'
 	lcall putchar1
 	ret	
+	
 ;beeper function to indicate reflow process has started
 Reflow_start_BEEPER:
  lcall ToneReset
@@ -1309,7 +1281,6 @@ Set_ReflowTemp2_3:
   ljmp Menu_select3
 Set_ReflowTemp2_4:
   ljmp Set_ReflowTemp2
- 
  
  
   
@@ -1887,9 +1858,6 @@ SMEndSongPlay6:
 SMEndSongPlayFinish:
 	Wait_Milli_Seconds(#50)
 	ret
-
-	
-
 
 
 ;--------------------;
